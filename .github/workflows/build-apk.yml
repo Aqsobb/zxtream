@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Z.XTREAM APK
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       frontend_url:
-        description: 'Frontend URL for the APK'
-        required: true
-        default: 'https://your-app.vercel.app'
+        description: 'Frontend URL'
+        required: false
+        default: 'https://zxtream-gf9925289-6749s-projects.vercel.app'
 
 jobs:
   build:
@@ -17,79 +17,79 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Clone website-to-apk
+        run: git clone --depth 1 https://github.com/Jipok/website-to-apk.git /tmp/web2apk
 
-      - name: Create web placeholder
+      - name: Get repo ID
+        id: repo
+        run: echo "id=$(curl -s https://api.github.com/repos/${{ github.repository }} | python3 -c 'import sys,json;print(json.load(sys.stdin).get(\"id\",\"\"))')" >> $GITHUB_OUTPUT
+
+      - name: Create config
         run: |
-          mkdir -p out
-          cat > out/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head><meta charset="utf-8"><title>Z.XTREAM</title></head>
-          <body style="background:#08080a;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh">
-            <p style="color:#c084fc">Loading...</p>
-          </body>
-          </html>
+          FRONTEND_URL="${{ github.event.inputs.frontend_url || 'https://zxtream-gf9925289-6749s-projects.vercel.app' }}"
+          cat > /tmp/web2apk/webapk.conf << EOF
+          id = zxtream
+          name = Z.XTREAM
+          mainURL = ${FRONTEND_URL}
+          icon =
+          allowSubdomains = true
+          requireDoubleBackToExit = true
+          enableExternalLinks = true
+          openExternalLinksInBrowser = true
+          confirmOpenInBrowser = true
+          allowOpenMobileApp = false
+          confirmOpenExternalApp = true
+          blockLocalhostRequests = false
+          JSEnabled = true
+          JSCanOpenWindowsAutomatically = true
+          DomStorageEnabled = true
+          DatabaseEnabled = true
+          MediaPlaybackRequiresUserGesture = false
+          SavePassword = true
+          edgeToEdge = true
+          forceDarkTheme = true
+          allowMixedContent = true
+          cacheMode = default
+          fadeInDuration = 400
+          DebugWebView = false
           EOF
 
-      - name: Init Capacitor
-        run: npx cap add android 2>/dev/null || true
-
-      - name: Configure Capacitor
+      - name: Generate signing key
+        working-directory: /tmp/web2apk
         run: |
-          FRONTEND_URL="${{ github.event.inputs.frontend_url || 'https://your-app.vercel.app' }}"
-          cat > capacitor.config.ts << EOF
-          import type { CapacitorConfig } from '@capacitor/cli';
-          const config: CapacitorConfig = {
-            appId: 'com.animestream.app',
-            appName: 'Z.XTREAM',
-            webDir: 'out',
-            server: {
-              androidScheme: 'https',
-              url: '${FRONTEND_URL}',
-              cleartext: true,
-              allowNavigation: ['*'],
-            },
-            plugins: {
-              SplashScreen: {
-                launchShowDuration: 2000,
-                backgroundColor: '#08080a',
-                showSpinner: false,
-              },
-              StatusBar: {
-                style: 'DARK',
-                backgroundColor: '#08080a',
-              },
-            },
-          };
-          export default config;
-          EOF
+          keytool -genkey -v -keystore app/my-release-key.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias my -storepass '123456' -keypass '123456' \
+            -dname "CN=Z.XTREAM, OU=Dev, O=Z.XTREAM, L=ID, S=ID, C=ID"
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Download Android SDK
+        working-directory: /tmp/web2apk
+        run: |
+          mkdir -p cmdline-tools
+          cd /tmp
+          wget -q 'https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip' -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d /tmp/web2apk/cmdline-tools
+          mv /tmp/web2apk/cmdline-tools/cmdline-tools /tmp/web2apk/cmdline-tools/latest
+
+          export ANDROID_HOME=/tmp/web2apk/cmdline-tools
+          yes | $ANDROID_HOME/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
+            'platform-tools' 'platforms;android-33' 'build-tools;33.0.2' 2>/dev/null || true
 
       - name: Build APK
+        working-directory: /tmp/web2apk
         run: |
-          cd android
-          ./gradlew assembleDebug
+          export ANDROID_HOME=/tmp/web2apk/cmdline-tools
+          bash make.sh build webapk.conf
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Z.XTREAM-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Z.XTREAM
+          path: /tmp/web2apk/zxtream.apk
+          if-no-files-found: error
