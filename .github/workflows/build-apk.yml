@@ -9,7 +9,7 @@ on:
       frontend_url:
         description: 'Frontend URL'
         required: false
-        default: 'https://zxtream-gf9925289-6749s-projects.vercel.app'
+        default: 'https://zxtream.vercel.app'
 
 jobs:
   build:
