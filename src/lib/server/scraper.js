@@ -72,25 +72,20 @@ async function searchAnime(query) {
   const cached = await getCachedData(`search/${query}`);
   if (cached?.data?.length > 0) return cached.data;
 
-  const $ = await fetchPage(`${BASE_URL}/?s=${encodeURIComponent(query)}`);
-  if (!$) return [];
-
   const results = [];
-  $('article.bs, .bsx').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) results.push(item);
-  });
+  const q = query.toLowerCase();
 
-  if (results.length === 0) {
-    $('a[href]').each((_, el) => {
+  for (let page = 1; page <= 3 && results.length === 0; page++) {
+    const url = page === 1 ? `${BASE_URL}/anime/` : `${BASE_URL}/anime/page/${page}/`;
+    const $ = await fetchPage(url);
+    if (!$) break;
+
+    $('article.bs').each((_, el) => {
       const $el = $(el);
-      const href = $el.attr('href') || '';
-      const title = $el.attr('title') || $el.text().trim();
-      if (href && title && href.includes('episode') && !results.some(r => r.slug === href.replace(/^\//, '').replace(/\/$/, ''))) {
-        const slug = href.replace(/^\//, '').replace(/\/$/, '');
-        if (slug && title.length > 5) {
-          results.push({ title, slug, thumbnail: '', episode: '', episodeNum: '', type: '', url: href });
-        }
+      const link = $el.find('a').first();
+      const title = (link.attr('title') || $el.find('h2').first().text().trim() || '').toLowerCase();
+      if (title.includes(q)) {
+        results.push(extractItem($, el));
       }
     });
   }
