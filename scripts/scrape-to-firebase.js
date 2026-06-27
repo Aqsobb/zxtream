@@ -203,25 +203,30 @@ async function main() {
   const home = await scrapeHome();
   await pushToFirebase('anime/home', home);
 
-  // 2. Scrape popular search terms
-  const searchCache = {};
-  const queries = ['one piece', 'dragon ball', 'naruto', 'attack on titan', 'demon slayer', 'jujutsu kaisen', 'my hero academia'];
-  for (const q of queries) {
-    const results = await scrapeSearch(q);
-    if (results.length > 0) {
-      searchCache[q] = results;
-      console.log(`Search "${q}": ${results.length} results`);
-    }
+  // 2. Build search index from /anime/ pages (all pages)
+  console.log('Building search index...');
+  const searchIndex = [];
+  for (let page = 1; page <= 30; page++) {
+    const url = page === 1 ? `${BASE_URL}/anime/` : `${BASE_URL}/anime/page/${page}/`;
+    const $ = await fetchPage(url);
+    if (!$) break;
+    let count = 0;
+    $('article.bs').each((_, el) => {
+      const item = extractItem($, el);
+      if (item.title && item.slug) { searchIndex.push(item); count++; }
+    });
+    console.log(`  Page ${page}: ${count} items`);
+    if (count === 0) break;
     await new Promise(r => setTimeout(r, 500));
   }
-  if (Object.keys(searchCache).length > 0) {
-    await pushToFirebase('search/cache', searchCache);
+  if (searchIndex.length > 0) {
+    await pushToFirebase('search/index', searchIndex);
+    console.log(`Search index: ${searchIndex.length} items total`);
   }
 
-  // 3. Scrape details for home page items (top 10 popular + top 10 recent)
+  // 3. Scrape details for home page items
   const allSlugs = new Set();
   [...home.popular.slice(0, 10), ...home.recent.slice(0, 10)].forEach(item => allSlugs.add(item.slug));
-
   for (const slug of allSlugs) {
     try {
       const detail = await scrapeDetail(slug);

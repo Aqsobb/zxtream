@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as scraper from '@/lib/server/scraper';
 
+export const runtime = 'nodejs';
+export const maxDuration = 30;
+
 export async function GET(req: NextRequest) {
   try {
     const q = req.nextUrl.searchParams.get('q');

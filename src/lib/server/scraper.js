@@ -126,21 +126,29 @@ async function searchAnime(query) {
   const cached = await getCachedData(`search/${query}`);
   if (cached?.data?.length > 0) return cached.data;
 
+  const indexCache = await getCachedData('search/index');
+  if (indexCache?.data?.length > 0) {
+    const q = query.toLowerCase();
+    const results = indexCache.data.filter(item =>
+      item.title.toLowerCase().includes(q)
+    ).slice(0, 30);
+    if (results.length > 0) {
+      await setCachedData(`search/${query}`, results, 15 * 60 * 1000);
+    }
+    return results;
+  }
+
   const results = [];
   const q = query.toLowerCase();
-
   for (let page = 1; page <= 3 && results.length === 0; page++) {
     const url = page === 1 ? `${BASE_URL}/anime/` : `${BASE_URL}/anime/page/${page}/`;
     const $ = await fetchPage(url);
     if (!$) break;
-
     $('article.bs').each((_, el) => {
       const $el = $(el);
       const link = $el.find('a').first();
       const title = (link.attr('title') || $el.find('h2').first().text().trim() || '').toLowerCase();
-      if (title.includes(q)) {
-        results.push(extractItem($, el));
-      }
+      if (title.includes(q)) results.push(extractItem($, el));
     });
   }
 
