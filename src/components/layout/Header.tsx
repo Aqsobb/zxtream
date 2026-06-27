@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineBell, HiOutlineSearch, HiOutlineUser } from 'react-icons/hi';
-import { io } from 'socket.io-client';
 
 export default function Header() {
   const router = useRouter();
@@ -21,20 +20,6 @@ export default function Header() {
       setUser(JSON.parse(stored));
     }
   }, []);
-
-  useEffect(() => {
-    if (user) {
-      const socket = io(process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001');
-      socket.emit('user:online', user.uid);
-      socket.on('notification:received', () => {
-        setNotifications((prev) => prev + 1);
-      });
-      return () => {
-        socket.emit('user:offline', user.uid);
-        socket.disconnect();
-      };
-    }
-  }, [user]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
