@@ -206,7 +206,7 @@ async function main() {
   // 2. Build search index from /anime/ pages (all pages)
   console.log('Building search index...');
   const searchIndex = [];
-  for (let page = 1; page <= 30; page++) {
+  for (let page = 1; page <= 100; page++) {
     const url = page === 1 ? `${BASE_URL}/anime/` : `${BASE_URL}/anime/page/${page}/`;
     const $ = await fetchPage(url);
     if (!$) break;
