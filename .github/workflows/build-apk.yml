@@ -14,6 +14,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -25,10 +28,6 @@ jobs:
 
       - name: Clone website-to-apk
         run: git clone --depth 1 https://github.com/Jipok/website-to-apk.git /tmp/web2apk
-
-      - name: Get repo ID
-        id: repo
-        run: echo "id=$(curl -s https://api.github.com/repos/${{ github.repository }} | python3 -c 'import sys,json;print(json.load(sys.stdin).get(\"id\",\"\"))')" >> $GITHUB_OUTPUT
 
       - name: Create config
         run: |
@@ -68,23 +67,26 @@ jobs:
             -alias my -storepass '123456' -keypass '123456' \
             -dname "CN=Z.XTREAM, OU=Dev, O=Z.XTREAM, L=ID, S=ID, C=ID"
 
-      - name: Download Android SDK
-        working-directory: /tmp/web2apk
+      - name: Install SDK platform
         run: |
-          mkdir -p cmdline-tools
-          cd /tmp
-          wget -q 'https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip' -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip -d /tmp/web2apk/cmdline-tools
-          mv /tmp/web2apk/cmdline-tools/cmdline-tools /tmp/web2apk/cmdline-tools/latest
-
-          export ANDROID_HOME=/tmp/web2apk/cmdline-tools
-          yes | $ANDROID_HOME/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
-            'platform-tools' 'platforms;android-33' 'build-tools;33.0.2' 2>/dev/null || true
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
+            'platforms;android-33' 'build-tools;33.0.2' 2>/dev/null || true
+          ls $ANDROID_HOME/platforms/
 
       - name: Build APK
         working-directory: /tmp/web2apk
         run: |
-          export ANDROID_HOME=/tmp/web2apk/cmdline-tools
+          # Point config to use GitHub's pre-installed SDK
+          mkdir -p app/src/main/java/com/zxtream
+          rm -rf app/src/main/java/com/zxtream/webtoapk 2>/dev/null || true
+
+          # Set ANDROID_HOME for Gradle
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+
+          # Create local.properties for Gradle
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+
           bash make.sh build webapk.conf
 
       - name: Upload APK
