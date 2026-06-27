@@ -1,0 +1,11 @@
+server/
+android-app/
+build-apk.sh
+setup.sh
+start.sh
+database.rules.json
+firestore.rules
+railway.toml
+.capacitor/
+android/
+*.apk
