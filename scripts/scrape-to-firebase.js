@@ -1,9 +1,9 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { getCachedData } = require('./firebase');
 
 const BASE_URL = 'https://anichin.moe';
-const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+const DB_URL = process.env.FIREBASE_DB_URL;
+const API_KEY = process.env.FIREBASE_API_KEY;
 
 const headers = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
@@ -12,17 +12,19 @@ const headers = {
   'Referer': BASE_URL,
 };
 
+function authUrl(path) {
+  const sep = path.includes('?') ? '&' : '?';
+  return API_KEY ? `${DB_URL}/${path}.json?auth=${API_KEY}` : `${DB_URL}/${path}.json`;
+}
+
 async function fetchPage(url) {
   try {
-    const proxyUrl = PROXY_URL + encodeURIComponent(url);
-    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
-    if (data && typeof data === 'string' && data.includes('bs')) {
-      return cheerio.load(data);
-    }
+    const { data } = await axios.get(url, { headers, timeout: 20000 });
+    return cheerio.load(data);
   } catch (error) {
-    console.error(`Proxy fetch failed for ${url}:`, error.message);
+    console.error(`Error fetching ${url}:`, error.message);
+    return null;
   }
-  return null;
 }
 
 function extractItem($, el) {
@@ -39,28 +41,8 @@ function extractItem($, el) {
   return { title, slug, thumbnail, episode, episodeNum, type, url };
 }
 
-function extractFromHtml(html) {
-  const $ = cheerio.load(html);
-  const popular = [];
-  $('.popularslider .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) popular.push(item);
-  });
-  const recent = [];
-  $('.normal .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) recent.push(item);
-  });
-  return { popular, recent };
-}
-
-async function getHomeAnime() {
-  const cached = await getCachedData('anime/home');
-  if (cached && cached.data && (cached.data.popular?.length > 0 || cached.data.recent?.length > 0)) {
-    return cached.data;
-  }
-
-  console.log('No Firebase cache for home, scraping...');
+async function scrapeHome() {
+  console.log('Scraping home page...');
   const $ = await fetchPage(BASE_URL);
   if (!$) return { popular: [], recent: [] };
 
@@ -71,38 +53,27 @@ async function getHomeAnime() {
   });
 
   const recent = [];
-  $('.normal .bs').each((_, el) => {
+  $('.normal .bs, .postbody .bs').each((_, el) => {
     const item = extractItem($, el);
     if (item.title && item.slug) recent.push(item);
   });
 
+  console.log(`Home: ${popular.length} popular, ${recent.length} recent`);
   return { popular, recent };
 }
 
-async function searchAnime(query) {
-  const cached = await getCachedData(`search/${query}`);
-  if (cached && cached.data && cached.data.length > 0) {
-    return cached.data;
-  }
-
+async function scrapeSearch(query) {
   const $ = await fetchPage(`${BASE_URL}/?s=${encodeURIComponent(query)}&post_type=anime`);
   if (!$) return [];
-
   const results = [];
   $('.listupd .bs, .bs').each((_, el) => {
     const item = extractItem($, el);
     if (item.title && item.slug) results.push(item);
   });
-
   return results;
 }
 
-async function getAnimeDetail(slug) {
-  const cached = await getCachedData(`anime/detail/${slug}`);
-  if (cached && cached.data && cached.data.title) {
-    return cached.data;
-  }
-
+async function scrapeDetail(slug) {
   let $ = await fetchPage(`${BASE_URL}/${slug}/`);
   if (!$) return null;
 
@@ -155,95 +126,110 @@ async function getAnimeDetail(slug) {
   });
 
   const episodes = [];
-  $series('.eplister ul li').each((_, el) => {
-    const $el = $series(el);
-    const link = $el.find('a').first();
-    const epNum = $el.find('.epl-num').text().trim();
-    const epTitle = $el.find('.epl-title').text().trim();
-    const epUrl = link.attr('href') || '';
-    const epDate = $el.find('.epl-date').text().trim();
-    if (epNum || epTitle) {
-      episodes.push({
-        title: epTitle,
-        number: parseInt(epNum) || 0,
-        url: epUrl,
-        date: epDate,
-      });
-    }
+  const epList = seriesSlug !== slug ? $series : $;
+  epList('.eplister ul li').each((_, el) => {
+    const $li = $(el);
+    const a = $li.find('a').first();
+    const epNum = $li.find('.epl-num').text().trim();
+    const epTitle = $li.find('.epl-title').text().trim();
+    const epDate = $li.find('.epl-date').text().trim();
+    const epUrl = a.attr('href') || '';
+    const numMatch = epNum.match(/(\d+)/);
+    episodes.push({
+      number: numMatch ? parseInt(numMatch[1]) : 0,
+      title: epTitle || `Episode ${epNum}`,
+      url: epUrl.replace(BASE_URL, ''),
+      date: epDate,
+    });
   });
 
   return {
     title: seriesTitle || title,
-    slug: seriesSlug,
     thumbnail,
-    banner: thumbnail,
     synopsis,
     info,
     genres,
     episodes,
-    type: info.tipe || '',
-    status: info.status || '',
-    releaseYear: parseInt(info.released || '0') || 0,
-    duration: info.durasi || '',
-    rating: info.rating || '',
-    studio: info.studio || '',
+    slug: seriesSlug,
+    url: `/${seriesSlug}/`,
   };
 }
 
-function extractIframeHtml(base64Html) {
+async function scrapeRecentSearches() {
+  const popularSearches = ['one piece', 'dragon ball', 'naruto', 'attack on titan', 'demon slayer'];
+  const searchCache = {};
+  for (const q of popularSearches) {
+    searchCache[q] = await scrapeSearch(q);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return searchCache;
+}
+
+async function pushToFirebase(path, data) {
+  const url = authUrl(path);
   try {
-    return Buffer.from(base64Html, 'base64').toString('utf8');
-  } catch {
-    return '';
+    await axios.put(url, {
+      data,
+      cachedAt: Date.now(),
+      expiresAt: Date.now() + (4 * 60 * 60 * 1000),
+    });
+    console.log(`Pushed to Firebase: ${path}`);
+    return true;
+  } catch (error) {
+    console.error(`Firebase push error [${path}]:`, error.message);
+    return false;
   }
 }
 
-function extractIframeSrc(base64Html) {
-  const html = extractIframeHtml(base64Html);
-  const srcMatch = html.match(/src=["']([^"']+)["']/i);
-  return srcMatch ? srcMatch[1] : '';
-}
+async function main() {
+  console.log('=== Z.XTREAM Scraper Job ===');
+  console.log('Time:', new Date().toISOString());
 
-async function getEpisodeServers(episodeUrl) {
-  const $ = await fetchPage(episodeUrl);
-  if (!$) return [];
-
-  const servers = [];
-  $('select.mirror option').each((_, el) => {
-    const $el = $(el);
-    const name = $el.text().trim();
-    const value = $el.attr('value') || '';
-    if (!name || !value || name === 'Pilih Server Video') return;
-    const iframeHtml = extractIframeHtml(value);
-    const streamUrl = extractIframeSrc(value);
-    servers.push({ name, url: streamUrl, embed: iframeHtml });
-  });
-
-  return servers;
-}
-
-async function getEpisodeStream(episodeUrl) {
-  const $ = await fetchPage(episodeUrl);
-  if (!$) return null;
-
-  const servers = await getEpisodeServers(episodeUrl);
-  let videoUrl = '';
-  if (servers.length > 0) {
-    videoUrl = servers[0].url;
+  if (!DB_URL || !API_KEY) {
+    console.error('Missing FIREBASE_DB_URL or FIREBASE_API_KEY');
+    process.exit(1);
   }
 
-  if (!videoUrl) {
-    const iframeSrc = $('iframe').first().attr('src') || '';
-    if (iframeSrc) videoUrl = iframeSrc;
+  // 1. Scrape home page
+  const home = await scrapeHome();
+  await pushToFirebase('anime/home', home);
+
+  // 2. Scrape popular search terms
+  const searchCache = {};
+  const queries = ['one piece', 'dragon ball', 'naruto', 'attack on titan', 'demon slayer', 'jujutsu kaisen', 'my hero academia'];
+  for (const q of queries) {
+    const results = await scrapeSearch(q);
+    if (results.length > 0) {
+      searchCache[q] = results;
+      console.log(`Search "${q}": ${results.length} results`);
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  if (Object.keys(searchCache).length > 0) {
+    await pushToFirebase('search/cache', searchCache);
   }
 
-  return { videoUrl, servers };
+  // 3. Scrape details for home page items (top 10 popular + top 10 recent)
+  const allSlugs = new Set();
+  [...home.popular.slice(0, 10), ...home.recent.slice(0, 10)].forEach(item => allSlugs.add(item.slug));
+
+  for (const slug of allSlugs) {
+    try {
+      const detail = await scrapeDetail(slug);
+      if (detail) {
+        await pushToFirebase(`anime/detail/${slug}`, detail);
+        console.log(`Detail: ${slug} (${detail.episodes?.length || 0} episodes)`);
+      }
+      await new Promise(r => setTimeout(r, 800));
+    } catch (err) {
+      console.error(`Error scraping detail ${slug}:`, err.message);
+    }
+  }
+
+  console.log('=== Scraper Job Complete ===');
 }
 
-module.exports = {
-  getHomeAnime,
-  searchAnime,
-  getAnimeDetail,
-  getEpisodeServers,
-  getEpisodeStream,
-};
+main().catch(err => {
+  console.error('Scraper failed:', err);
+  process.exit(1);
+});
