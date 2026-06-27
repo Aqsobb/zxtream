@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as userDb from '../../../../../../server/services/user-db';
+import * as userDb from '@/lib/server/user-db';
 
 export async function GET(req: NextRequest) {
   try {

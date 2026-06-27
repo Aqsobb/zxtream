@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as adminDb from '../../../../../server/services/admin-db';
+import * as adminDb from '@/lib/server/admin-db';
 
 export async function POST(req: NextRequest) {
   try {

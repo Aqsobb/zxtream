@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as adminDb from '../../../../../server/services/admin-db';
-import * as userDb from '../../../../../server/services/user-db';
+import * as adminDb from '@/lib/server/admin-db';
+import * as userDb from '@/lib/server/user-db';
 
 const DEV_UID = process.env.DEV_UID || '33333';
 

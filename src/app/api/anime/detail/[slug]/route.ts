@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as scraper from '../../../../../../../../server/services/scraper';
+import * as scraper from '@/lib/server/scraper';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {

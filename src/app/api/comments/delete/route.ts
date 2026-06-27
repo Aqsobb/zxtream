@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import * as userDb from '../../../../../../server/services/user-db';
+import * as userDb from '@/lib/server/user-db';
 
 const DB_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL!;
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY!;
