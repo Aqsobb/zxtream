@@ -16,10 +16,11 @@ export async function GET() {
         },
         signal: AbortSignal.timeout(15000),
       });
-      debug.fetchStatus = res.status;
-      const html = await res.text();
-      debug.htmlLength = html.length;
-      debug.hasBs = html.includes('class="bs"');
+    debug.fetchStatus = res.status;
+    const html = await res.text();
+    debug.htmlLength = html.length;
+    debug.hasBs = html.includes('class="bs"');
+    debug.sample = html.substring(0, 800);
     } catch (e: any) {
       debug.fetchError = e.message;
     }
