@@ -9,79 +9,51 @@ const UA_LIST = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
 ];
 
-function pickUA() {
-  return UA_LIST[Math.floor(Math.random() * UA_LIST.length)];
-}
+function pickUA() { return UA_LIST[Math.floor(Math.random() * UA_LIST.length)]; }
 
 function makeHeaders() {
   return {
     'User-Agent': pickUA(),
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
-    'Cache-Control': 'no-cache',
-    'Sec-Ch-Ua': '"Chromium";v="126", "Not/A)Brand";v="8", "Google Chrome";v="126"',
+    'Sec-Ch-Ua': '"Chromium";v="126"',
     'Sec-Ch-Ua-Mobile': '?0',
-    'Sec-Ch-Ua-Platform': '"Linux"',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1',
     'Upgrade-Insecure-Requests': '1',
-    'Connection': 'keep-alive',
   };
 }
 
 function parseHtml(html) {
   if (!html || typeof html !== 'string') return null;
-  const dominated = html.includes('challenge-platform') || html.includes('cf-browser-verification');
-  if (dominated) return null;
-  if (html.length < 500) return null;
+  if (html.includes('challenge-platform') || html.length < 500) return null;
   try { return cheerio.load(html); } catch { return null; }
 }
 
-async function directFetch(url, retryCount = 0) {
+async function directFetch(url) {
   try {
-    const { data } = await axios.get(url, {
-      headers: makeHeaders(),
-      timeout: 12000,
-      maxRedirects: 5,
-    });
+    const { data } = await axios.get(url, { headers: makeHeaders(), timeout: 12000, maxRedirects: 5 });
     return parseHtml(data);
-  } catch (e) {
-    if (retryCount < 1) {
-      await new Promise(r => setTimeout(r, 500));
-      return directFetch(url, retryCount + 1);
-    }
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function proxyFetch(url) {
   if (!PROXY_BASE) return null;
   try {
-    const proxyUrl = `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
-    const { data } = await axios.get(proxyUrl, {
-      headers: { 'User-Agent': pickUA() },
-      timeout: 18000,
+    const { data } = await axios.get(`${PROXY_BASE}?url=${encodeURIComponent(url)}`, {
+      headers: { 'User-Agent': pickUA() }, timeout: 18000,
     });
     return parseHtml(data);
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 async function fetchPage(url) {
-  const $1 = await proxyFetch(url);
-  if ($1) return $1;
-  const $2 = await directFetch(url);
-  if ($2) return $2;
-  console.error(`All fetch methods failed: ${url}`);
-  return null;
+  return await proxyFetch(url) || await directFetch(url);
 }
 
 function extractItem($, el) {
@@ -97,23 +69,35 @@ function extractItem($, el) {
   return { title, slug, thumbnail, episode, episodeNum: epMatch ? epMatch[1] : '', type, url };
 }
 
+function dedupe(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    if (seen.has(item.slug)) return false;
+    seen.add(item.slug);
+    return true;
+  });
+}
+
+async function scrapeListPage(url) {
+  const $ = await fetchPage(url);
+  if (!$) return [];
+  const results = [];
+  $('article.bs').each((_, el) => {
+    const item = extractItem($, el);
+    if (item.title && item.slug) results.push(item);
+  });
+  return results;
+}
+
 async function getHomeAnime() {
   const cached = await getCachedData('anime/home');
   if (cached?.data?.popular?.length > 0) return cached.data;
 
   const $ = await fetchPage(BASE_URL);
-  if (!$) return { popular: [], recent: [] };
+  if (!$) return { popular: [], recent: [], schedule: {} };
 
-  const popular = [];
-  $('.popularslider .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) popular.push(item);
-  });
-  const recent = [];
-  $('.normal .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) recent.push(item);
-  });
+  const popular = dedupe($('.popularslider .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
+  const recent = dedupe($('.normal .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
 
   const result = { popular, recent };
   if (result.popular.length > 0) {
@@ -122,40 +106,54 @@ async function getHomeAnime() {
   return result;
 }
 
-async function searchAnime(query) {
-  const cached = await getCachedData(`search/${query}`);
+async function getOngoingAnime(page = 1) {
+  const cacheKey = `anime/ongoing/${page}`;
+  const cached = await getCachedData(cacheKey);
   if (cached?.data?.length > 0) return cached.data;
 
+  const url = page === 1 ? `${BASE_URL}/ongoing/` : `${BASE_URL}/ongoing/page/${page}/`;
+  const results = await scrapeListPage(url);
+
+  if (results.length > 0) {
+    await setCachedData(cacheKey, results, 30 * 60 * 1000);
+  }
+  return results;
+}
+
+async function getCompletedAnime(page = 1) {
+  const cacheKey = `anime/completed/${page}`;
+  const cached = await getCachedData(cacheKey);
+  if (cached?.data?.length > 0) return cached.data;
+
+  const url = page === 1 ? `${BASE_URL}/completed/` : `${BASE_URL}/completed/page/${page}/`;
+  const results = await scrapeListPage(url);
+
+  if (results.length > 0) {
+    await setCachedData(cacheKey, results, 30 * 60 * 1000);
+  }
+  return results;
+}
+
+async function searchAnime(query) {
   const indexCache = await getCachedData('search/index');
   if (indexCache?.data?.length > 0) {
     const q = query.toLowerCase();
-    const results = indexCache.data.filter(item =>
+    return dedupe(indexCache.data.filter(item =>
       item.title.toLowerCase().includes(q)
-    ).slice(0, 30);
-    if (results.length > 0) {
-      await setCachedData(`search/${query}`, results, 15 * 60 * 1000);
-    }
-    return results;
+    )).slice(0, 30);
   }
+  return [];
+}
 
-  const results = [];
-  const q = query.toLowerCase();
-  for (let page = 1; page <= 3 && results.length === 0; page++) {
-    const url = page === 1 ? `${BASE_URL}/anime/` : `${BASE_URL}/anime/page/${page}/`;
-    const $ = await fetchPage(url);
-    if (!$) break;
-    $('article.bs').each((_, el) => {
-      const $el = $(el);
-      const link = $el.find('a').first();
-      const title = (link.attr('title') || $el.find('h2').first().text().trim() || '').toLowerCase();
-      if (title.includes(q)) results.push(extractItem($, el));
-    });
+async function suggestAnime(query) {
+  const indexCache = await getCachedData('search/index');
+  if (indexCache?.data?.length > 0) {
+    const q = query.toLowerCase();
+    return dedupe(indexCache.data.filter(item =>
+      item.title.toLowerCase().includes(q)
+    )).slice(0, 8).map(item => ({ title: item.title, slug: item.slug, thumbnail: item.thumbnail, type: item.type }));
   }
-
-  if (results.length > 0) {
-    await setCachedData(`search/${query}`, results, 15 * 60 * 1000);
-  }
-  return results;
+  return [];
 }
 
 async function getAnimeDetail(slug) {
@@ -258,4 +256,4 @@ async function getEpisodeStream(episodeUrl) {
   return { videoUrl, servers };
 }
 
-module.exports = { getHomeAnime, searchAnime, getAnimeDetail, getEpisodeServers, getEpisodeStream };
+module.exports = { getHomeAnime, searchAnime, suggestAnime, getAnimeDetail, getEpisodeServers, getEpisodeStream, getOngoingAnime, getCompletedAnime };
