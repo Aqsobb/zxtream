@@ -5,28 +5,82 @@ const { getCachedData, setCachedData } = require('./firebase');
 const BASE_URL = 'https://anichin.moe';
 const PROXY_BASE = process.env.PROXY_URL || '';
 
-const headers = {
-  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.5',
-};
+const UA_LIST = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+];
+
+function pickUA() {
+  return UA_LIST[Math.floor(Math.random() * UA_LIST.length)];
+}
+
+function makeHeaders() {
+  return {
+    'User-Agent': pickUA(),
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Sec-Ch-Ua': '"Chromium";v="126", "Not/A)Brand";v="8", "Google Chrome";v="126"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Linux"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    'Connection': 'keep-alive',
+  };
+}
+
+function parseHtml(html) {
+  if (!html || typeof html !== 'string') return null;
+  const dominated = html.includes('challenge-platform') || html.includes('cf-browser-verification');
+  if (dominated) return null;
+  if (html.length < 500) return null;
+  try { return cheerio.load(html); } catch { return null; }
+}
+
+async function directFetch(url, retryCount = 0) {
+  try {
+    const { data } = await axios.get(url, {
+      headers: makeHeaders(),
+      timeout: 12000,
+      maxRedirects: 5,
+    });
+    return parseHtml(data);
+  } catch (e) {
+    if (retryCount < 1) {
+      await new Promise(r => setTimeout(r, 500));
+      return directFetch(url, retryCount + 1);
+    }
+    return null;
+  }
+}
+
+async function proxyFetch(url) {
+  if (!PROXY_BASE) return null;
+  try {
+    const proxyUrl = `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
+    const { data } = await axios.get(proxyUrl, {
+      headers: { 'User-Agent': pickUA() },
+      timeout: 18000,
+    });
+    return parseHtml(data);
+  } catch {
+    return null;
+  }
+}
 
 async function fetchPage(url) {
-  try {
-    let fetchUrl = url;
-    if (PROXY_BASE) {
-      fetchUrl = `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
-    }
-    const { data } = await axios.get(fetchUrl, {
-      headers,
-      timeout: 15000,
-    });
-    if (typeof data === 'string' && data.length > 1000) {
-      return cheerio.load(data);
-    }
-  } catch (error) {
-    console.error(`Fetch failed: ${url} - ${error.message}`);
-  }
+  const $1 = await proxyFetch(url);
+  if ($1) return $1;
+  const $2 = await directFetch(url);
+  if ($2) return $2;
+  console.error(`All fetch methods failed: ${url}`);
   return null;
 }
 

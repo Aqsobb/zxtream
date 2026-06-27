@@ -2,14 +2,14 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 
 const BASE_URL = 'https://anichin.moe';
+const WORKER_URL = 'https://api.aqsobonde.workers.dev';
 const DB_URL = process.env.FIREBASE_DB_URL;
 const API_KEY = process.env.FIREBASE_API_KEY;
 
 const headers = {
-  'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-  'Accept-Language': 'en-US,en;q=0.5',
-  'Referer': BASE_URL,
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
 };
 
 function authUrl(path) {
@@ -18,13 +18,22 @@ function authUrl(path) {
 }
 
 async function fetchPage(url) {
-  try {
-    const { data } = await axios.get(url, { headers, timeout: 20000 });
-    return cheerio.load(data);
-  } catch (error) {
-    console.error(`Error fetching ${url}:`, error.message);
-    return null;
+  const urls = [
+    `${WORKER_URL}?url=${encodeURIComponent(url)}`,
+    url,
+  ];
+  for (const fetchUrl of urls) {
+    try {
+      const { data } = await axios.get(fetchUrl, { headers, timeout: 20000 });
+      if (typeof data === 'string' && data.length > 1000 && data.includes('bs')) {
+        return cheerio.load(data);
+      }
+    } catch (e) {
+      continue;
+    }
   }
+  console.error(`All fetch methods failed: ${url}`);
+  return null;
 }
 
 function extractItem($, el) {
