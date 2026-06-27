@@ -21,6 +21,9 @@ import {
   HiOutlineGlobe,
   HiOutlineGift,
   HiOutlineShieldCheck,
+  HiOutlinePlay,
+  HiOutlineCheckCircle,
+  HiOutlineCollection,
 } from 'react-icons/hi';
 import { FaFire, FaCrown, FaUserShield } from 'react-icons/fa';
 import RoleBadge from '@/components/ui/RoleBadge';
@@ -32,6 +35,12 @@ const navItems = [
   { href: '/history', label: 'History', icon: HiOutlineClock },
   { href: '/leaderboard', label: 'Leaderboard', icon: HiOutlineChartBar },
   { href: '/redeem', label: 'Redeem Code', icon: HiOutlineGift },
+];
+
+const browseItems = [
+  { href: '/browse/populer', label: 'Populer', icon: HiOutlineFire },
+  { href: '/browse/ongoing', label: 'Ongoing', icon: HiOutlinePlay },
+  { href: '/browse/completed', label: 'Completed', icon: HiOutlineCheckCircle },
 ];
 
 export default function Sidebar() {
@@ -112,6 +121,32 @@ export default function Sidebar() {
                 </Link>
               );
             })}
+
+            {/* Browse section */}
+            <div className="pt-3 mt-3 border-t border-dark-700/50">
+              <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Browse</p>
+              {browseItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-primary-600/20 text-primary-400 border border-primary-500/30'
+                        : 'text-dark-300 hover:bg-dark-800 hover:text-white'
+                    }`}
+                  >
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-primary-400' : ''}`} />
+                    <span className="font-medium">{item.label}</span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-2 bg-primary-500 rounded-full" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
 
           {/* User section */}
