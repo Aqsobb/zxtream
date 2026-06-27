@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "users": {
+      ".read": true,
+      ".write": true
+    },
+    "comments": {
+      ".read": true,
+      ".write": true
+    },
+    "codes": {
+      ".read": true,
+      ".write": true
+    },
+    "siteSettings": {
+      ".read": true,
+      ".write": true
+    },
+    "notifications": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}

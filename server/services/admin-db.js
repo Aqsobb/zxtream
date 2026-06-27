@@ -1,0 +1,186 @@
+const axios = require('axios');
+
+const DB_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+function authUrl(path) {
+  return API_KEY
+    ? `${DB_URL}/${path}.json?auth=${API_KEY}`
+    : `${DB_URL}/${path}.json`;
+}
+
+// --- Codes ---
+async function getAllCodes() {
+  try {
+    const { data } = await axios.get(authUrl('codes'));
+    return data || {};
+  } catch { return {}; }
+}
+
+async function generateCode(type, value, maxUses = 1, description = '') {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+  const codeData = {
+    type,       // 'owner', 'vvip', 'vip', 'premium', 'exp', 'coins'
+    value,      // role name or amount
+    maxUses,
+    usedBy: {},
+    description,
+    createdAt: Date.now(),
+  };
+
+  await axios.put(authUrl(`codes/${code}`), codeData);
+  return { code, ...codeData };
+}
+
+async function redeemCode(code, uid, displayName) {
+  const allCodes = await getAllCodes();
+  const codeData = allCodes[code];
+
+  if (!codeData) return { success: false, error: 'Code not found' };
+  if (codeData.usedBy && Object.keys(codeData.usedBy).length >= codeData.maxUses) {
+    return { success: false, error: 'Code already used' };
+  }
+
+  // Mark as used
+  const usedUpdate = {};
+  usedUpdate[`codes/${code}/usedBy/${uid}`] = {
+    displayName,
+    usedAt: Date.now(),
+  };
+  await axios.patch(authUrl(''), usedUpdate);
+
+  // Apply reward
+  let roleUpdate = {};
+  let message = '';
+
+  switch (codeData.type) {
+    case 'owner':
+      roleUpdate = { role: 'owner', isOwner: true, roleAssignedAt: Date.now() };
+      message = 'You are now an Owner!';
+      break;
+    case 'vvip':
+      roleUpdate = { role: 'vvip', roleAssignedAt: Date.now() };
+      message = 'You are now VVIP!';
+      break;
+    case 'vip':
+      roleUpdate = { role: 'vip', roleAssignedAt: Date.now() };
+      message = 'You are now VIP!';
+      break;
+    case 'premium':
+      roleUpdate = { role: 'premium', premiumUntil: Date.now() + (codeData.value || 30) * 86400000 };
+      message = `Premium activated for ${codeData.value || 30} days!`;
+      break;
+    case 'exp':
+      const expAmount = codeData.value || 1000;
+      const currentUser = await getSimpleUser(uid);
+      roleUpdate = { totalExp: (currentUser?.totalExp || 0) + expAmount };
+      message = `+${expAmount} EXP added!`;
+      break;
+    case 'coins':
+      roleUpdate = { coins: codeData.value || 1000 };
+      message = `+${codeData.value || 1000} Coins added!`;
+      break;
+    default:
+      return { success: false, error: 'Unknown code type' };
+  }
+
+  await axios.patch(authUrl(`users/${uid}`), roleUpdate);
+  return { success: true, message, type: codeData.type };
+}
+
+// --- Comments admin ---
+async function deleteComment(commentId, requesterUid) {
+  const requester = await getSimpleUser(requesterUid);
+  if (!requester || (!requester.isOwner && requester.role !== 'owner' && requester.role !== 'vvip')) {
+    return { success: false, error: 'Not authorized' };
+  }
+
+  const types = ['anime', 'episode'];
+  for (const type of types) {
+    try {
+      const { data } = await axios.get(authUrl(`comments/${type}`));
+      if (!data) continue;
+      for (const [targetId, comments] of Object.entries(data)) {
+        if (comments[commentId]) {
+          await axios.delete(authUrl(`comments/${type}/${targetId}/${commentId}`));
+          return { success: true };
+        }
+      }
+    } catch { continue; }
+  }
+  return { success: false, error: 'Comment not found' };
+}
+
+async function getSimpleUser(uid) {
+  try {
+    const { data } = await axios.get(authUrl(`users/${uid}`));
+    return data;
+  } catch { return null; }
+}
+
+// --- Admin: manage users ---
+async function setRole(uid, role) {
+  try {
+    await axios.patch(authUrl(`users/${uid}`), {
+      role,
+      isOwner: role === 'owner',
+      roleAssignedAt: Date.now(),
+    });
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function banUser(uid) {
+  try {
+    await axios.patch(authUrl(`users/${uid}`), { banned: true });
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function unbanUser(uid) {
+  try {
+    await axios.patch(authUrl(`users/${uid}`), { banned: false });
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function deleteUser(uid) {
+  try {
+    await axios.delete(authUrl(`users/${uid}`));
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function getAllUsers() {
+  try {
+    const { data } = await axios.get(authUrl('users'));
+    if (!data) return [];
+    return Object.entries(data).map(([uid, u]) => ({
+      uid,
+      displayName: u.displayName,
+      photoURL: u.photoURL,
+      role: u.role || 'member',
+      isOwner: u.isOwner || false,
+      banned: u.banned || false,
+      totalExp: u.totalExp || 0,
+      watchTime: u.watchTime || 0,
+      level: u.level || 1,
+    }));
+  } catch { return []; }
+}
+
+module.exports = {
+  getAllCodes, generateCode, redeemCode,
+  deleteComment, setRole, banUser, unbanUser, deleteUser, getAllUsers,
+};

@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm install && node node_modules/next/dist/bin/next build"
+
+[deploy]
+startCommand = "node server/index.js"
+healthcheckPath = "/health"
