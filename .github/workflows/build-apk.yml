@@ -14,9 +14,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -67,26 +64,23 @@ jobs:
             -alias my -storepass '123456' -keypass '123456' \
             -dname "CN=Z.XTREAM, OU=Dev, O=Z.XTREAM, L=ID, S=ID, C=ID"
 
-      - name: Install SDK platform
-        run: |
-          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME \
-            'platforms;android-33' 'build-tools;33.0.2' 2>/dev/null || true
-          ls $ANDROID_HOME/platforms/
-
-      - name: Build APK
+      - name: Setup SDK + Build APK
         working-directory: /tmp/web2apk
         run: |
-          # Point config to use GitHub's pre-installed SDK
-          mkdir -p app/src/main/java/com/zxtream
-          rm -rf app/src/main/java/com/zxtream/webtoapk 2>/dev/null || true
+          # make.sh expects cmdline-tools at $PWD/cmdline-tools/
+          # Symlink system SDK cmdline-tools into expected location
+          mkdir -p cmdline-tools
+          ln -sf /usr/local/lib/android/sdk/cmdline-tools cmdline-tools/latest
 
-          # Set ANDROID_HOME for Gradle
-          export ANDROID_HOME=/usr/local/lib/android/sdk
-          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          # Ensure platform-33 exists
+          echo "y" | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager \
+            --sdk_root=/usr/local/lib/android/sdk \
+            'platforms;android-33' 'build-tools;33.0.2' 2>/dev/null || true
 
-          # Create local.properties for Gradle
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          # Set local.properties
+          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
 
+          # Build
           bash make.sh build webapk.conf
 
       - name: Upload APK
