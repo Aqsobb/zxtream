@@ -1,26 +1,31 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { getCachedData } = require('./firebase');
+const { getCachedData, setCachedData } = require('./firebase');
 
 const BASE_URL = 'https://anichin.moe';
-const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+const PROXY_BASE = process.env.PROXY_URL || '';
 
 const headers = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'en-US,en;q=0.5',
-  'Referer': BASE_URL,
 };
 
 async function fetchPage(url) {
   try {
-    const proxyUrl = PROXY_URL + encodeURIComponent(url);
-    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
-    if (data && typeof data === 'string' && data.includes('bs')) {
+    let fetchUrl = url;
+    if (PROXY_BASE) {
+      fetchUrl = `${PROXY_BASE}?url=${encodeURIComponent(url)}`;
+    }
+    const { data } = await axios.get(fetchUrl, {
+      headers,
+      timeout: 15000,
+    });
+    if (typeof data === 'string' && data.length > 1000) {
       return cheerio.load(data);
     }
   } catch (error) {
-    console.error(`Proxy fetch failed for ${url}:`, error.message);
+    console.error(`Fetch failed: ${url} - ${error.message}`);
   }
   return null;
 }
@@ -35,32 +40,13 @@ function extractItem($, el) {
   const episode = $el.find('.epx').text().trim();
   const type = $el.find('.typez').text().trim().split(' ')[0] || '';
   const epMatch = episode.match(/(\d+)/);
-  const episodeNum = epMatch ? epMatch[1] : '';
-  return { title, slug, thumbnail, episode, episodeNum, type, url };
-}
-
-function extractFromHtml(html) {
-  const $ = cheerio.load(html);
-  const popular = [];
-  $('.popularslider .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) popular.push(item);
-  });
-  const recent = [];
-  $('.normal .bs').each((_, el) => {
-    const item = extractItem($, el);
-    if (item.title && item.slug) recent.push(item);
-  });
-  return { popular, recent };
+  return { title, slug, thumbnail, episode, episodeNum: epMatch ? epMatch[1] : '', type, url };
 }
 
 async function getHomeAnime() {
   const cached = await getCachedData('anime/home');
-  if (cached && cached.data && (cached.data.popular?.length > 0 || cached.data.recent?.length > 0)) {
-    return cached.data;
-  }
+  if (cached?.data?.popular?.length > 0) return cached.data;
 
-  console.log('No Firebase cache for home, scraping...');
   const $ = await fetchPage(BASE_URL);
   if (!$) return { popular: [], recent: [] };
 
@@ -69,21 +55,22 @@ async function getHomeAnime() {
     const item = extractItem($, el);
     if (item.title && item.slug) popular.push(item);
   });
-
   const recent = [];
   $('.normal .bs').each((_, el) => {
     const item = extractItem($, el);
     if (item.title && item.slug) recent.push(item);
   });
 
-  return { popular, recent };
+  const result = { popular, recent };
+  if (result.popular.length > 0) {
+    await setCachedData('anime/home', result, 30 * 60 * 1000);
+  }
+  return result;
 }
 
 async function searchAnime(query) {
   const cached = await getCachedData(`search/${query}`);
-  if (cached && cached.data && cached.data.length > 0) {
-    return cached.data;
-  }
+  if (cached?.data?.length > 0) return cached.data;
 
   const $ = await fetchPage(`${BASE_URL}/?s=${encodeURIComponent(query)}&post_type=anime`);
   if (!$) return [];
@@ -94,14 +81,15 @@ async function searchAnime(query) {
     if (item.title && item.slug) results.push(item);
   });
 
+  if (results.length > 0) {
+    await setCachedData(`search/${query}`, results, 15 * 60 * 1000);
+  }
   return results;
 }
 
 async function getAnimeDetail(slug) {
   const cached = await getCachedData(`anime/detail/${slug}`);
-  if (cached && cached.data && cached.data.title) {
-    return cached.data;
-  }
+  if (cached?.data?.title) return cached.data;
 
   let $ = await fetchPage(`${BASE_URL}/${slug}/`);
   if (!$) return null;
@@ -112,40 +100,27 @@ async function getAnimeDetail(slug) {
 
   let seriesSlug = slug;
   if (isEpisodePage) {
-    const allLinks = [];
-    $('.bixbox').first().find('a[href]').each((_, el) => {
-      allLinks.push($(el).attr('href'));
-    });
-    for (const href of allLinks) {
-      const m = href.match(/^\/([^/]+)\/$/);
-      if (m && m[1] !== slug && !m[1].includes('episode')) {
-        seriesSlug = m[1];
-        break;
-      }
+    for (const href of $('.bixbox').first().find('a[href]').toArray().map(e => $(e).attr('href'))) {
+      const m = href?.match(/^\/([^/]+)\/$/);
+      if (m && m[1] !== slug && !m[1].includes('episode')) { seriesSlug = m[1]; break; }
     }
   }
 
   let $series = $;
   if (seriesSlug !== slug) {
-    const $fetched = await fetchPage(`${BASE_URL}/${seriesSlug}/`);
-    if ($fetched) {
-      const seriesTitle = $fetched('h1.entry-title, h1').first().text().trim();
-      if (seriesTitle && !seriesTitle.includes('Anichin')) {
-        $series = $fetched;
-      }
+    const $f = await fetchPage(`${BASE_URL}/${seriesSlug}/`);
+    if ($f) {
+      const t = $f('h1.entry-title, h1').first().text().trim();
+      if (t && !t.includes('Anichin')) $series = $f;
     }
   }
-
-  const seriesTitle = $series('h1.entry-title, h1').first().text().trim();
-  const thumbnail = $series('.thumb img, .bigor img, .wp-post-image').first().attr('src') || '';
-  const synopsis = $series('.desc p, .entry-content p, .sinopsis p').first().text().trim();
 
   const info = {};
   $series('.spe span').each((_, el) => {
     const $el = $series(el);
-    const bText = $el.find('b').text().trim().toLowerCase().replace(':', '').replace(/\s+/g, '');
-    const value = $el.text().replace($el.find('b').text(), '').trim();
-    if (bText && value) info[bText] = value;
+    const k = $el.find('b').text().trim().toLowerCase().replace(':', '').replace(/\s+/g, '');
+    const v = $el.text().replace($el.find('b').text(), '').trim();
+    if (k && v) info[k] = v;
   });
 
   const genres = [];
@@ -157,93 +132,59 @@ async function getAnimeDetail(slug) {
   const episodes = [];
   $series('.eplister ul li').each((_, el) => {
     const $el = $series(el);
-    const link = $el.find('a').first();
     const epNum = $el.find('.epl-num').text().trim();
     const epTitle = $el.find('.epl-title').text().trim();
-    const epUrl = link.attr('href') || '';
+    const epUrl = $el.find('a').first().attr('href') || '';
     const epDate = $el.find('.epl-date').text().trim();
     if (epNum || epTitle) {
-      episodes.push({
-        title: epTitle,
-        number: parseInt(epNum) || 0,
-        url: epUrl,
-        date: epDate,
-      });
+      episodes.push({ title: epTitle, number: parseInt(epNum) || 0, url: epUrl, date: epDate });
     }
   });
 
-  return {
-    title: seriesTitle || title,
+  const result = {
+    title: $series('h1.entry-title, h1').first().text().trim() || title,
     slug: seriesSlug,
-    thumbnail,
-    banner: thumbnail,
-    synopsis,
-    info,
-    genres,
-    episodes,
-    type: info.tipe || '',
-    status: info.status || '',
-    releaseYear: parseInt(info.released || '0') || 0,
-    duration: info.durasi || '',
-    rating: info.rating || '',
-    studio: info.studio || '',
+    thumbnail: $series('.thumb img, .bigor img, .wp-post-image').first().attr('src') || '',
+    synopsis: $series('.desc p, .entry-content p, .sinopsis p').first().text().trim(),
+    info, genres, episodes,
   };
+
+  if (result.title) {
+    await setCachedData(`anime/detail/${slug}`, result, 60 * 60 * 1000);
+  }
+  return result;
 }
 
 function extractIframeHtml(base64Html) {
-  try {
-    return Buffer.from(base64Html, 'base64').toString('utf8');
-  } catch {
-    return '';
-  }
+  try { return Buffer.from(base64Html, 'base64').toString('utf8'); } catch { return ''; }
 }
 
 function extractIframeSrc(base64Html) {
   const html = extractIframeHtml(base64Html);
-  const srcMatch = html.match(/src=["']([^"']+)["']/i);
-  return srcMatch ? srcMatch[1] : '';
+  const m = html.match(/src=["']([^"']+)["']/i);
+  return m ? m[1] : '';
 }
 
 async function getEpisodeServers(episodeUrl) {
   const $ = await fetchPage(episodeUrl);
   if (!$) return [];
-
   const servers = [];
   $('select.mirror option').each((_, el) => {
     const $el = $(el);
     const name = $el.text().trim();
     const value = $el.attr('value') || '';
     if (!name || !value || name === 'Pilih Server Video') return;
-    const iframeHtml = extractIframeHtml(value);
-    const streamUrl = extractIframeSrc(value);
-    servers.push({ name, url: streamUrl, embed: iframeHtml });
+    servers.push({ name, url: extractIframeSrc(value), embed: extractIframeHtml(value) });
   });
-
   return servers;
 }
 
 async function getEpisodeStream(episodeUrl) {
   const $ = await fetchPage(episodeUrl);
   if (!$) return null;
-
   const servers = await getEpisodeServers(episodeUrl);
-  let videoUrl = '';
-  if (servers.length > 0) {
-    videoUrl = servers[0].url;
-  }
-
-  if (!videoUrl) {
-    const iframeSrc = $('iframe').first().attr('src') || '';
-    if (iframeSrc) videoUrl = iframeSrc;
-  }
-
+  let videoUrl = servers[0]?.url || $('iframe').first().attr('src') || '';
   return { videoUrl, servers };
 }
 
-module.exports = {
-  getHomeAnime,
-  searchAnime,
-  getAnimeDetail,
-  getEpisodeServers,
-  getEpisodeStream,
-};
+module.exports = { getHomeAnime, searchAnime, getAnimeDetail, getEpisodeServers, getEpisodeStream };
