@@ -111,6 +111,14 @@ body {
   100% { transform: translateY(-40px) translateX(20px); opacity: 0; }
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Smooth page transitions */
 main {
   animation: fadeIn 0.3s ease-out;

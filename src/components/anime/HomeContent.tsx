@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineFire, HiOutlineClock, HiOutlineChevronRight } from 'react-icons/hi';
+import { HiOutlineFire, HiOutlineClock, HiOutlineChevronRight, HiOutlineChevronLeft } from 'react-icons/hi';
 import AnimeCard from './AnimeCard';
 import EpisodeCard from './EpisodeCard';
 import { API_BASE } from '@/lib/config';
@@ -33,6 +33,7 @@ export default function HomeContent() {
   const [popular, setPopular] = useState<AnimeItem[]>([]);
   const [recent, setRecent] = useState<EpisodeItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchHomeData();
@@ -53,17 +54,41 @@ export default function HomeContent() {
     }
   };
 
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = 300;
+      carouselRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-8">
+        {/* Hero skeleton */}
+        <div className="h-48 bg-white/5 rounded-3xl animate-pulse" />
+        {/* Carousel skeleton */}
         <div className="space-y-4">
-          <div className="h-8 w-48 bg-white/5 rounded-lg animate-pulse" />
+          <div className="h-6 w-48 bg-white/5 rounded-lg animate-pulse" />
+          <div className="flex gap-4 overflow-hidden">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex-shrink-0 w-40 space-y-2">
+                <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
+                <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Grid skeleton */}
+        <div className="space-y-4">
+          <div className="h-6 w-48 bg-white/5 rounded-lg animate-pulse" />
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {[...Array(10)].map((_, i) => (
               <div key={i} className="space-y-2">
                 <div className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />
                 <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
-                <div className="h-3 w-1/2 bg-white/5 rounded animate-pulse" />
               </div>
             ))}
           </div>
@@ -83,15 +108,11 @@ export default function HomeContent() {
           background: 'linear-gradient(135deg, rgba(88,28,135,0.3) 0%, rgba(8,8,10,1) 40%, rgba(157,23,77,0.2) 100%)',
         }}
       >
-        {/* Animated particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-10 left-[10%] w-2 h-2 bg-purple-400 rounded-full opacity-40 animate-[float_3s_ease-in-out_infinite]" />
           <div className="absolute top-20 left-[30%] w-1.5 h-1.5 bg-pink-400 rounded-full opacity-30 animate-[float_4s_ease-in-out_infinite_0.5s]" />
           <div className="absolute top-16 right-[20%] w-2.5 h-2.5 bg-purple-300 rounded-full opacity-20 animate-[float_5s_ease-in-out_infinite_1s]" />
-          <div className="absolute bottom-16 left-[40%] w-1 h-1 bg-pink-300 rounded-full opacity-35 animate-[float_3.5s_ease-in-out_infinite_0.3s]" />
-          <div className="absolute bottom-24 right-[35%] w-2 h-2 bg-purple-500 rounded-full opacity-25 animate-[float_4.5s_ease-in-out_infinite_0.8s]" />
         </div>
-
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full text-xs text-purple-300 font-medium mb-4">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
@@ -126,30 +147,42 @@ export default function HomeContent() {
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-pink-500/8 rounded-full blur-[100px]" />
       </motion.section>
 
-      {/* Popular Anime */}
+      {/* Populer Hari Ini - Horizontal Carousel */}
       <section>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-500/10 rounded-xl">
               <HiOutlineFire className="w-6 h-6 text-orange-400" />
             </div>
-            <h2 className="text-xl font-bold">Popular Anime</h2>
+            <h2 className="text-xl font-bold">Populer Hari Ini</h2>
           </div>
-          <Link
-            href="/search?sort=popular"
-            className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
-          >
-            View All
-            <HiOutlineChevronRight className="w-4 h-4" />
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => scrollCarousel('left')}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <HiOutlineChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => scrollCarousel('right')}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <HiOutlineChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {popular.slice(0, 10).map((anime, index) => (
+        <div
+          ref={carouselRef}
+          className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {popular.map((anime, index) => (
             <motion.div
               key={anime.slug}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
+              className="flex-shrink-0 w-40"
             >
               <AnimeCard anime={anime} />
             </motion.div>
@@ -157,20 +190,20 @@ export default function HomeContent() {
         </div>
       </section>
 
-      {/* Recent Episodes */}
+      {/* Recent Episodes - Grid */}
       <section>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-purple-500/10 rounded-xl">
               <HiOutlineClock className="w-6 h-6 text-purple-400" />
             </div>
-            <h2 className="text-xl font-bold">Recent Episodes</h2>
+            <h2 className="text-xl font-bold">Episode Terbaru</h2>
           </div>
           <Link
-            href="/search?sort=recent"
+            href="/search"
             className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
           >
-            View All
+            Lihat Semua
             <HiOutlineChevronRight className="w-4 h-4" />
           </Link>
         </div>
