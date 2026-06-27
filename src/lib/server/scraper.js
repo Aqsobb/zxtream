@@ -3,6 +3,7 @@ const cheerio = require('cheerio');
 const { getFreshOrCached } = require('./firebase');
 
 const BASE_URL = 'https://anichin.moe';
+const PROXY_URL = 'https://api.allorigins.win/raw?url=';
 
 const headers = {
   'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36',
@@ -28,13 +29,27 @@ async function fetchPage(url) {
   const memCached = getMemCache(url);
   if (memCached) return memCached;
 
+  // Try direct fetch first
   try {
     const { data } = await axios.get(url, { headers, timeout: 15000 });
+    if (data && data.includes && data.includes('bs')) {
+      const $ = cheerio.load(data);
+      setMemCache(url, $);
+      return $;
+    }
+  } catch (error) {
+    // Direct fetch failed, try proxy
+  }
+
+  // Fallback to proxy
+  try {
+    const proxyUrl = PROXY_URL + encodeURIComponent(url);
+    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
     const $ = cheerio.load(data);
     setMemCache(url, $);
     return $;
   } catch (error) {
-    console.error(`Error fetching ${url}:`, error.message);
+    console.error(`Error fetching ${url} (proxy):`, error.message);
     return null;
   }
 }
