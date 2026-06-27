@@ -72,14 +72,28 @@ async function searchAnime(query) {
   const cached = await getCachedData(`search/${query}`);
   if (cached?.data?.length > 0) return cached.data;
 
-  const $ = await fetchPage(`${BASE_URL}/?s=${encodeURIComponent(query)}&post_type=anime`);
+  const $ = await fetchPage(`${BASE_URL}/?s=${encodeURIComponent(query)}`);
   if (!$) return [];
 
   const results = [];
-  $('.listupd .bs, .bs').each((_, el) => {
+  $('article.bs, .bsx').each((_, el) => {
     const item = extractItem($, el);
     if (item.title && item.slug) results.push(item);
   });
+
+  if (results.length === 0) {
+    $('a[href]').each((_, el) => {
+      const $el = $(el);
+      const href = $el.attr('href') || '';
+      const title = $el.attr('title') || $el.text().trim();
+      if (href && title && href.includes('episode') && !results.some(r => r.slug === href.replace(/^\//, '').replace(/\/$/, ''))) {
+        const slug = href.replace(/^\//, '').replace(/\/$/, '');
+        if (slug && title.length > 5) {
+          results.push({ title, slug, thumbnail: '', episode: '', episodeNum: '', type: '', url: href });
+        }
+      }
+    });
+  }
 
   if (results.length > 0) {
     await setCachedData(`search/${query}`, results, 15 * 60 * 1000);
