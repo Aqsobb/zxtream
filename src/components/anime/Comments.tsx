@@ -146,7 +146,7 @@ export default function Comments({ type, targetId }: CommentsProps) {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Write a comment..."
-              className="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50"
+              className="w-full p-3 bg-dark-800 border border-white/10 rounded-xl text-white placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50"
               rows={2}
             />
             <div className="flex justify-end mt-2">
