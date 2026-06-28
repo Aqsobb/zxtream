@@ -143,9 +143,9 @@ export default function LeaderboardPage() {
                   {/* Stats */}
                   <div className="text-right">
                     <p className="font-bold text-primary-400">
-                      {activeTab === 'exp' && `${entry.exp.toLocaleString()} EXP`}
-                      {activeTab === 'watchtime' && `${Math.floor(entry.watchTime / 3600)}h`}
-                      {activeTab === 'comments' && `${entry.watchTime}`}
+                      {activeTab === 'exp' && `${(entry.exp || entry.totalExp || 0).toLocaleString()} EXP`}
+                      {activeTab === 'watchtime' && `${Math.floor((entry.watchTime || 0) / 3600)}h`}
+                      {activeTab === 'comments' && `${(entry.totalExp || 0).toLocaleString()} EXP`}
                     </p>
                     <p className="text-sm text-dark-400">Level {entry.level}</p>
                   </div>

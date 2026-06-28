@@ -119,9 +119,11 @@ async function getLeaderboard(orderBy = 'totalExp', limit = 100) {
       displayName: u.displayName,
       photoURL: u.photoURL,
       level: u.level,
-      totalExp: u.totalExp,
+      exp: u.totalExp || 0,
+      totalExp: u.totalExp || 0,
       title: u.title,
-      badges: u.badges,
+      role: u.role || 'member',
+      badges: u.badges || [],
       watchTime: u.watchTime || 0,
       country: u.country,
     }));
