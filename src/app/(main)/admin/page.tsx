@@ -7,6 +7,7 @@ import {
   HiOutlineCog, HiOutlinePlus, HiOutlineTrash, HiOutlineShieldCheck,
   HiOutlineBan, HiOutlineUserGroup, HiOutlineColorSwatch, HiOutlineChat,
   HiOutlineBell, HiOutlineChartBar, HiOutlineLink, HiOutlineGlobe,
+  HiOutlineCurrencyDollar, HiOutlineExclamation,
 } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import RoleBadge from '@/components/ui/RoleBadge';
@@ -44,7 +45,7 @@ interface Comment {
   createdAt: number;
 }
 
-type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast';
+type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast' | 'donations';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -72,6 +73,13 @@ export default function AdminPage() {
   const [accentColor, setAccentColor] = useState('#ec4899');
   const [telegramLink, setTelegramLink] = useState('');
   const [savingTheme, setSavingTheme] = useState(false);
+
+  // Donation form
+  const [donationEnabled, setDonationEnabled] = useState(false);
+  const [donationQR, setDonationQR] = useState('');
+  const [donationDana, setDonationDana] = useState('');
+  const [donationTelegram, setDonationTelegram] = useState('');
+  const [savingDonation, setSavingDonation] = useState(false);
 
   // Broadcast form
   const [broadcastTitle, setBroadcastTitle] = useState('');
@@ -112,6 +120,11 @@ export default function AdminPage() {
         setPrimaryColor(themeData.data.primaryColor || '#a78bfa');
         setAccentColor(themeData.data.accentColor || '#ec4899');
         setTelegramLink(themeData.data.telegramLink || '');
+        const d = themeData.data.donation || {};
+        setDonationEnabled(d.enabled || false);
+        setDonationQR(d.qrUrl || '');
+        setDonationDana(d.danaNumber || '');
+        setDonationTelegram(d.telegramLink || '');
       }
     } catch (e) {
       console.error('Failed to fetch admin data:', e);
@@ -148,7 +161,6 @@ export default function AdminPage() {
     }
   };
 
-  // Delete code
   const handleDeleteCode = async (code: string) => {
     if (!currentUser || !confirm(`Delete code "${code}"?`)) return;
     await fetch(`${API_BASE}/api/admin/codes`, {
@@ -159,7 +171,6 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  // Set role
   const handleSetRole = async (uid: string, role: string) => {
     if (!currentUser) return;
     await fetch(`${API_BASE}/api/admin/role`, {
@@ -170,7 +181,6 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  // Ban/Unban
   const handleBan = async (uid: string) => {
     if (!currentUser) return;
     await fetch(`${API_BASE}/api/admin/ban`, {
@@ -191,7 +201,6 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  // Delete user
   const handleDeleteUser = async (uid: string) => {
     if (!currentUser || !confirm('Delete this user permanently?')) return;
     await fetch(`${API_BASE}/api/admin/delete-user`, {
@@ -202,7 +211,6 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  // Delete comment
   const handleDeleteComment = async (comment: Comment) => {
     if (!currentUser || !confirm('Delete this comment?')) return;
     await fetch(`${API_BASE}/api/admin/comments`, {
@@ -218,7 +226,6 @@ export default function AdminPage() {
     fetchAll();
   };
 
-  // Save theme
   const handleSaveTheme = async () => {
     if (!currentUser) return;
     setSavingTheme(true);
@@ -236,7 +243,30 @@ export default function AdminPage() {
     }
   };
 
-  // Broadcast
+  const handleSaveDonation = async () => {
+    if (!currentUser) return;
+    setSavingDonation(true);
+    try {
+      await fetch(`${API_BASE}/api/admin/theme`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterUid: currentUser.uid,
+          settings: {
+            donation: {
+              enabled: donationEnabled,
+              qrUrl: donationQR,
+              danaNumber: donationDana,
+              telegramLink: donationTelegram,
+            },
+          },
+        }),
+      });
+    } catch {} finally {
+      setSavingDonation(false);
+    }
+  };
+
   const handleBroadcast = async () => {
     if (!currentUser || !broadcastTitle.trim() || !broadcastMsg.trim()) return;
     setSendingBroadcast(true);
@@ -258,6 +288,28 @@ export default function AdminPage() {
     }
   };
 
+  // Delete all non-premium users
+  const handleDeleteNonPremium = async () => {
+    if (!currentUser) return;
+    if (!confirm('DELETE ALL non-premium users (member only)? This cannot be undone!')) return;
+    if (!confirm('ARE YOU REALLY SURE? This deletes ALL member accounts!')) return;
+
+    const nonPremium = users.filter(u => !u.isOwner && u.role === 'member');
+    let deleted = 0;
+    for (const u of nonPremium) {
+      try {
+        await fetch(`${API_BASE}/api/admin/delete-user`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid: u.uid, requesterUid: currentUser.uid }),
+        });
+        deleted++;
+      } catch {}
+    }
+    alert(`Deleted ${deleted} non-premium users`);
+    fetchAll();
+  };
+
   if (!isOwner) {
     return (
       <MainLayout>
@@ -277,6 +329,7 @@ export default function AdminPage() {
     { id: 'users', label: 'Users', icon: HiOutlineUserGroup },
     { id: 'codes', label: 'Codes', icon: HiOutlinePlus },
     { id: 'theme', label: 'Theme', icon: HiOutlineColorSwatch },
+    { id: 'donations', label: 'Donasi', icon: HiOutlineCurrencyDollar },
     { id: 'comments', label: 'Comments', icon: HiOutlineChat },
     { id: 'broadcast', label: 'Broadcast', icon: HiOutlineBell },
   ];
@@ -356,13 +409,22 @@ export default function AdminPage() {
             {/* USERS TAB */}
             {tab === 'users' && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Search users..."
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm mb-4 focus:outline-none focus:border-purple-500/50"
-                />
+                <div className="flex items-center justify-between mb-4">
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Search users..."
+                    className="w-full max-w-sm px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500/50"
+                  />
+                  <button
+                    onClick={handleDeleteNonPremium}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium hover:bg-red-500/30 transition-colors ml-3 flex-shrink-0"
+                  >
+                    <HiOutlineExclamation className="w-4 h-4" />
+                    Hapus Non-Premium
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {users
                     .filter(u => !userSearch || u.displayName?.toLowerCase().includes(userSearch.toLowerCase()) || u.uid.includes(userSearch))
@@ -386,6 +448,7 @@ export default function AdminPage() {
                           <option value="member">Member</option>
                           <option value="vip">VIP</option>
                           <option value="vvip">VVIP</option>
+                          <option value="owner">Owner</option>
                         </select>
                         {user.banned ? (
                           <button onClick={() => handleUnban(user.uid)} className="px-2 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs">Unban</button>
@@ -530,6 +593,52 @@ export default function AdminPage() {
                   <button onClick={handleSaveTheme} disabled={savingTheme}
                     className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all">
                     {savingTheme ? 'Saving...' : 'Save Theme'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* DONATIONS TAB */}
+            {tab === 'donations' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h2 className="text-lg font-bold mb-4">Donation Settings</h2>
+                <div className="space-y-4">
+                  <label className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Enable Donation Section</span>
+                    <input
+                      type="checkbox"
+                      checked={donationEnabled}
+                      onChange={(e) => setDonationEnabled(e.target.checked)}
+                      className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600"
+                    />
+                  </label>
+                  {donationEnabled && (
+                    <>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">QR Code Image URL</label>
+                        <input type="url" value={donationQR} onChange={(e) => setDonationQR(e.target.value)}
+                          placeholder="https://..."
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                        <p className="text-xs text-gray-500 mt-1">Upload QR image ke imgur atau hosting lain, paste linknya</p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">Nomor Dana</label>
+                        <input type="text" value={donationDana} onChange={(e) => setDonationDana(e.target.value)}
+                          placeholder="08xxxxxxxxxx"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-400 mb-1 block">Telegram Group Link</label>
+                        <input type="url" value={donationTelegram} onChange={(e) => setDonationTelegram(e.target.value)}
+                          placeholder="https://t.me/..."
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                      </div>
+                    </>
+                  )}
+                  <button onClick={handleSaveDonation} disabled={savingDonation}
+                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all">
+                    {savingDonation ? 'Saving...' : 'Save Donation Settings'}
                   </button>
                 </div>
               </motion.div>

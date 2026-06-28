@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineCog, HiOutlineUserGroup, HiOutlineStar, HiOutlineClock, HiOutlineCollection, HiOutlineShieldCheck } from 'react-icons/hi';
+import { HiOutlineCog, HiOutlineUserGroup, HiOutlineStar, HiOutlineClock, HiOutlineCollection, HiOutlineShieldCheck, HiOutlineSparkles } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import RoleBadge, { ProfileCard } from '@/components/ui/RoleBadge';
 import { getLevelForExp, getProgressPercent } from '@/lib/levels';
+import { getRoleConfig } from '@/lib/roles';
 import { API_BASE } from '@/lib/config';
 
 interface UserProfile {
@@ -36,6 +37,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -104,12 +106,35 @@ export default function ProfilePage() {
 
   const levelInfo = getLevelForExp(profile.totalExp);
   const progress = getProgressPercent(profile.totalExp);
+  const roleConfig = getRoleConfig(profile.role);
+  const isPremium = profile.role === 'owner' || profile.role === 'vvip' || profile.role === 'vip';
+  const isDev = profile.role === 'dev';
 
   return (
     <MainLayout>
       <div className="p-4 lg:p-6 max-w-4xl mx-auto">
         {/* Profile Card with Role Effects */}
         <ProfileCard user={profile} className="mb-6" />
+
+        {/* Role-specific role glow effect */}
+        {isDev && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-center"
+          >
+            <span className="text-cyan-400 text-sm font-medium">⚡ Developer Mode Active — Full Access</span>
+          </motion.div>
+        )}
+        {profile.role === 'owner' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center"
+          >
+            <span className="text-yellow-400 text-sm font-medium">👑 Boss Besar — Full Control</span>
+          </motion.div>
+        )}
 
         {/* Level Progress */}
         <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
@@ -173,10 +198,19 @@ export default function ProfilePage() {
         )}
 
         {/* Actions */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           {isOwnProfile ? (
             <>
-              {(profile.role === 'owner' || (JSON.parse(localStorage.getItem('user') || '{}').isOwner)) && (
+              {!isPremium && !isDev && (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
+                >
+                  <HiOutlineSparkles className="w-5 h-5" />
+                  Upgrade Premium
+                </button>
+              )}
+              {(profile.role === 'owner' || profile.role === 'dev' || isOwnProfile) && (
                 <Link
                   href="/admin"
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
@@ -206,6 +240,52 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+
+        {/* Upgrade Modal */}
+        {showUpgradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowUpgradeModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-dark-800 border border-white/10 rounded-2xl p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <HiOutlineSparkles className="text-purple-400" />
+                Upgrade ke Premium
+              </h3>
+              <div className="space-y-3 mb-6">
+                <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <RoleBadge role="vip" size="sm" />
+                  </div>
+                  <p className="text-xs text-gray-400">Akses semua server, badge VIP, efek khusus</p>
+                </div>
+                <div className="p-3 bg-white/5 rounded-xl border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-1">
+                    <RoleBadge role="vvip" size="sm" />
+                  </div>
+                  <p className="text-xs text-gray-400">Semua fitur VIP + Diamond badge + Banner gacor + Prioritas</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-400 mb-4">
+                Minta code premium ke Owner via Telegram, lalu redeem di{' '}
+                <Link href="/redeem" className="text-purple-400 hover:underline">Redeem Code</Link>
+              </p>
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm hover:bg-white/10 transition-colors"
+              >
+                Tutup
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
     </MainLayout>
   );
