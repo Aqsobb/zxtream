@@ -234,6 +234,51 @@ function extractIframeSrc(base64Html) {
   return m ? m[1] : '';
 }
 
+const PREMIUM_SERVERS = ['4k', '4kui', 'wafilm', 'wibufiles', 'sextimax', 'hls', 'vidhide', 'filelions', 'streamtape'];
+
+function isPremiumServer(name) {
+  const lower = name.toLowerCase();
+  return PREMIUM_SERVERS.some(p => lower.includes(p));
+}
+
+async function resolveDirectUrl(embedUrl) {
+  if (!embedUrl || !embedUrl.startsWith('http')) return null;
+  try {
+    const { data: html } = await axios.get(embedUrl, {
+      headers: { ...makeHeaders(), Referer: embedUrl },
+      timeout: 10000,
+      maxRedirects: 5,
+    });
+    if (!html || typeof html !== 'string') return null;
+
+    // Try to extract m3u8 URLs
+    const m3u8Match = html.match(/["'](https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)["']/i);
+    if (m3u8Match) return { url: m3u8Match[1], type: 'hls' };
+
+    // Try to extract mp4 URLs
+    const mp4Match = html.match(/["'](https?:\/\/[^"'\s]+\.mp4[^"'\s]*)["']/i);
+    if (mp4Match) return { url: mp4Match[1], type: 'mp4' };
+
+    // Try file:"..." pattern (common in streaming embeds)
+    const fileMatch = html.match(/file\s*[:=]\s*["'](https?:\/\/[^"'\s]+)["']/i);
+    if (fileMatch) {
+      const ext = fileMatch[1].match(/\.(m3u8|mp4|mkv)/i);
+      return { url: fileMatch[1], type: ext ? ext[1].toLowerCase() : 'mp4' };
+    }
+
+    // Try source:"..." pattern
+    const sourceMatch = html.match(/source\s*[:=]\s*["'](https?:\/\/[^"'\s]+)["']/i);
+    if (sourceMatch) {
+      const ext = sourceMatch[1].match(/\.(m3u8|mp4|mkv)/i);
+      return { url: sourceMatch[1], type: ext ? ext[1].toLowerCase() : 'mp4' };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function getEpisodeServers(episodeUrl) {
   const $ = await fetchPage(episodeUrl);
   if (!$) return [];
@@ -243,7 +288,13 @@ async function getEpisodeServers(episodeUrl) {
     const name = $el.text().trim();
     const value = $el.attr('value') || '';
     if (!name || !value || name === 'Pilih Server Video') return;
-    servers.push({ name, url: extractIframeSrc(value), embed: extractIframeHtml(value) });
+    const iframeUrl = extractIframeSrc(value);
+    servers.push({
+      name,
+      url: iframeUrl,
+      embed: extractIframeHtml(value),
+      premium: isPremiumServer(name),
+    });
   });
   return servers;
 }
@@ -252,7 +303,21 @@ async function getEpisodeStream(episodeUrl) {
   const $ = await fetchPage(episodeUrl);
   if (!$) return null;
   const servers = await getEpisodeServers(episodeUrl);
-  let videoUrl = servers[0]?.url || $('iframe').first().attr('src') || '';
+
+  // Try to resolve direct URLs for each server (in parallel, first 3)
+  const toResolve = servers.slice(0, 3);
+  const resolved = await Promise.allSettled(
+    toResolve.map(s => resolveDirectUrl(s.url))
+  );
+
+  resolved.forEach((r, i) => {
+    if (r.status === 'fulfilled' && r.value) {
+      servers[i].directUrl = r.value.url;
+      servers[i].directType = r.value.type;
+    }
+  });
+
+  let videoUrl = servers[0]?.directUrl || servers[0]?.url || $('iframe').first().attr('src') || '';
   return { videoUrl, servers };
 }
 

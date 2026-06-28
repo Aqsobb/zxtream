@@ -41,6 +41,12 @@ export default function WatchPage() {
   const [animeTitle, setAnimeTitle] = useState('');
   const [animeSlug, setAnimeSlug] = useState('');
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (user?.role) setUserRole(user.role);
+  }, []);
 
   useEffect(() => {
     fetchStreamData();
@@ -126,6 +132,7 @@ export default function WatchPage() {
           episodeId={episodeId}
           animeSlug={animeSlug}
           episodes={episodes}
+          userRole={userRole}
         />
 
         {/* Info Bar */}

@@ -3,17 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  HiOutlinePlay, HiOutlinePause, HiOutlineCog, HiOutlineX,
-  HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineLightBulb,
-  HiOutlineVolumeUp, HiOutlineVolumeOff, HiOutlineArrowSmRight,
+  HiOutlinePlay, HiOutlineX, HiOutlineLightBulb,
   HiOutlineArrowsExpand, HiOutlineClock, HiOutlineChevronDown,
+  HiOutlineChevronLeft, HiOutlineChevronRight,
 } from 'react-icons/hi';
 import { API_BASE } from '@/lib/config';
+import Hls from 'hls.js';
 
 interface Server {
   name: string;
   url: string;
   speed?: number;
+  directUrl?: string;
+  directType?: string;
+  premium?: boolean;
 }
 
 interface Episode {
@@ -28,41 +31,87 @@ interface VideoPlayerProps {
   episodeId: string;
   animeSlug?: string;
   episodes?: Episode[];
+  userRole?: string;
   onServerChange?: (index: number) => void;
 }
 
-export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, onServerChange }: VideoPlayerProps) {
+export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, userRole, onServerChange }: VideoPlayerProps) {
   const [selectedServer, setSelectedServer] = useState(0);
   const [showControls, setShowControls] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
   const [showServerDropdown, setShowServerDropdown] = useState(false);
   const [testingServers, setTestingServers] = useState(false);
   const [autoSelected, setAutoSelected] = useState(false);
-  const [pipActive, setPipActive] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [useHLS, setUseHLS] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const controlsTimerRef = useRef<NodeJS.Timeout>();
   const saveTimerRef = useRef<NodeJS.Timeout>();
 
+  const isPremiumUser = ['owner', 'dev', 'vvip', 'vip'].includes(userRole || '');
+  const currentServer = servers[selectedServer];
+  const hasDirectUrl = !!currentServer?.directUrl && currentServer?.directType === 'hls';
+  const shouldUseHLS = hasDirectUrl && useHLS;
+
+  // Auto-select fastest server
   useEffect(() => {
     if (servers.length <= 1) return;
     autoSelectFastest();
   }, [servers]);
 
+  // Resume playback check
   useEffect(() => {
     checkResume();
   }, [episodeId]);
 
+  // Save progress periodically
   useEffect(() => {
     saveTimerRef.current = setInterval(() => {
       saveProgress();
     }, 30000);
     return () => clearInterval(saveTimerRef.current);
   }, [episodeId]);
+
+  // Initialize HLS when video element is ready and shouldUseHLS is true
+  useEffect(() => {
+    if (shouldUseHLS && videoRef.current) {
+      initHLS();
+    }
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [shouldUseHLS, selectedServer, episodeId]);
+
+  const initHLS = async () => {
+    if (!videoRef.current || !currentServer?.directUrl) return;
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+    }
+
+    if (Hls.isSupported()) {
+      const hls = new Hls({
+        xhrSetup: (xhr) => {
+          xhr.setRequestHeader('Referer', 'https://anichin.moe/');
+        },
+      });
+      hlsRef.current = hls;
+      hls.loadSource(currentServer.directUrl);
+      hls.attachMedia(videoRef.current);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoRef.current?.play().catch(() => {});
+      });
+    } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      videoRef.current.src = currentServer.directUrl;
+      videoRef.current.play().catch(() => {});
+    }
+  };
 
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
@@ -76,13 +125,28 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
   }, []);
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    const handler = () => {
+      const fs = !!document.fullscreenElement;
+      // update state via ref if needed
+    };
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
   const autoSelectFastest = async () => {
     setTestingServers(true);
+
+    // Prefer direct URL servers first
+    const directIdx = servers.findIndex(s => s.directUrl);
+    if (directIdx >= 0) {
+      setSelectedServer(directIdx);
+      setAutoSelected(true);
+      setUseHLS(servers[directIdx].directType === 'hls');
+      onServerChange?.(directIdx);
+      setTestingServers(false);
+      return;
+    }
+
     const results = await Promise.allSettled(
       servers.map(async (server, index) => {
         const start = Date.now();
@@ -144,9 +208,15 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
   };
 
   const switchServer = (index: number) => {
+    const server = servers[index];
+    // Check premium access
+    if (server.premium && !isPremiumUser) {
+      alert('Server ini khusus premium! VIP/VVIP/Owner/Dev only.');
+      return;
+    }
     setSelectedServer(index);
     setShowServerDropdown(false);
-    setShowSettings(false);
+    setUseHLS(server.directType === 'hls');
     onServerChange?.(index);
   };
 
@@ -157,21 +227,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
     } else {
       document.exitFullscreen();
     }
-  };
-
-  const togglePiP = async () => {
-    try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-        setPipActive(false);
-      } else if (iframeRef.current) {
-        const video = document.querySelector('video');
-        if (video) {
-          await video.requestPictureInPicture();
-          setPipActive(true);
-        }
-      }
-    } catch {}
   };
 
   const getCurrentEpisodeIndex = () => {
@@ -190,7 +245,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
     }
   };
 
-  const currentServer = servers[selectedServer];
   const currentIdx = getCurrentEpisodeIndex();
 
   return (
@@ -212,19 +266,24 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
             <div className="bg-dark-800 border border-white/10 rounded-2xl p-6 max-w-sm text-center">
               <HiOutlineClock className="w-12 h-12 mx-auto text-purple-400 mb-3" />
               <h3 className="text-lg font-bold mb-2">Resume Playback?</h3>
-              <p className="text-sm text-gray-400 mb-4">You watched this before. Continue where you left off?</p>
+              <p className="text-sm text-gray-400 mb-4">Kamu pernah nonton ini. Lanjut?</p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => setShowResumePrompt(false)}
                   className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm hover:bg-white/10 transition-colors"
                 >
-                  Start Over
+                  Mulai dari Awal
                 </button>
                 <button
-                  onClick={() => setShowResumePrompt(false)}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-medium hover:from-purple-500 hover:to-pink-500 transition-colors"
+                  onClick={() => {
+                    setShowResumePrompt(false);
+                    if (videoRef.current && resumeData.progress) {
+                      videoRef.current.currentTime = resumeData.progress;
+                    }
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-medium"
                 >
-                  Resume
+                  Lanjutkan
                 </button>
               </div>
             </div>
@@ -232,11 +291,18 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
         )}
       </AnimatePresence>
 
-      {/* Video iframe */}
+      {/* Video */}
       <div className="relative aspect-video">
-        {currentServer?.url ? (
+        {shouldUseHLS ? (
+          <video
+            ref={videoRef}
+            className="w-full h-full"
+            controls={showControls}
+            playsInline
+            autoPlay
+          />
+        ) : currentServer?.url ? (
           <iframe
-            ref={iframeRef}
             key={`${episodeId}-${selectedServer}`}
             src={currentServer.url}
             className="w-full h-full"
@@ -248,76 +314,103 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <HiOutlinePlay className="w-16 h-16 mx-auto text-gray-600 mb-4" />
-              <p className="text-gray-400">No video source available</p>
+              <p className="text-gray-400">Tidak ada sumber video</p>
             </div>
           </div>
         )}
 
-        {/* Controls overlay */}
-        <AnimatePresence>
-          {showControls && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10 pointer-events-none"
-            >
-              {/* Top bar */}
-              <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
-                <div className="flex items-center gap-2">
-                  {autoSelected && (
+        {/* Controls overlay for HLS mode */}
+        {shouldUseHLS && (
+          <AnimatePresence>
+            {showControls && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10 pointer-events-none"
+              >
+                <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
+                  <div className="flex items-center gap-2">
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-lg border border-green-500/30">
-                      Auto: {currentServer?.name}
+                      Direct Stream — No Ads
                     </span>
-                  )}
-                  {testingServers && (
-                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-lg border border-yellow-500/30 animate-pulse">
-                      Testing servers...
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={togglePiP}
-                    className="p-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-white"
-                    title="Picture in Picture">
-                    <HiOutlineArrowsExpand className="w-5 h-5" />
-                  </button>
+                    {currentServer?.premium && (
+                      <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-lg border border-yellow-500/30">
+                        4K Premium
+                      </span>
+                    )}
+                  </div>
                   <button onClick={toggleFullscreen}
                     className="p-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-white"
                     title="Fullscreen">
-                    {isFullscreen ? <HiOutlineX className="w-5 h-5" /> : <HiOutlineArrowsExpand className="w-5 h-5" />}
+                    <HiOutlineArrowsExpand className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
 
-              {/* Bottom bar - prev/next */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
-                <button
-                  onClick={() => goToEpisode('prev')}
-                  disabled={!episodes || currentIdx <= 0}
-                  className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                >
-                  <HiOutlineChevronLeft className="w-4 h-4" />
-                  Prev
-                </button>
-                <span className="text-xs text-white/60">
-                  {currentIdx >= 0 ? `EP ${currentIdx + 1}/${episodes?.length}` : ''}
-                </span>
-                <button
-                  onClick={() => goToEpisode('next')}
-                  disabled={!episodes || currentIdx >= (episodes?.length || 0) - 1}
-                  className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                >
-                  Next
-                  <HiOutlineChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
+                  <button
+                    onClick={() => goToEpisode('prev')}
+                    disabled={!episodes || currentIdx <= 0}
+                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <HiOutlineChevronLeft className="w-4 h-4" />
+                    Prev
+                  </button>
+                  <span className="text-xs text-white/60">
+                    {currentIdx >= 0 ? `EP ${currentIdx + 1}/${episodes?.length}` : ''}
+                  </span>
+                  <button
+                    onClick={() => goToEpisode('next')}
+                    disabled={!episodes || currentIdx >= (episodes?.length || 0) - 1}
+                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                    <HiOutlineChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+
+        {/* Controls overlay for iframe mode */}
+        {!shouldUseHLS && (
+          <AnimatePresence>
+            {showControls && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none"
+              >
+                <div className="flex items-center justify-between pointer-events-auto">
+                  <button
+                    onClick={() => goToEpisode('prev')}
+                    disabled={!episodes || currentIdx <= 0}
+                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <HiOutlineChevronLeft className="w-4 h-4" />
+                    Prev
+                  </button>
+                  <span className="text-xs text-white/60">
+                    {currentIdx >= 0 ? `EP ${currentIdx + 1}/${episodes?.length}` : ''}
+                  </span>
+                  <button
+                    onClick={() => goToEpisode('next')}
+                    disabled={!episodes || currentIdx >= (episodes?.length || 0) - 1}
+                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                    <HiOutlineChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </div>
 
-      {/* Server Selection - Single button with dropdown */}
+      {/* Server Selection */}
       <div className="p-3 bg-dark-800 border-t border-white/5 relative">
         <div className="flex items-center justify-between">
           <button
@@ -326,21 +419,22 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
           >
             <span className="text-gray-400">Server:</span>
             <span className="font-medium">{currentServer?.name || 'Unknown'}</span>
-            {currentServer?.speed !== undefined && (
-              <span className="text-[10px] text-gray-500">({currentServer.speed}ms)</span>
+            {currentServer?.directUrl && (
+              <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">DIRECT</span>
+            )}
+            {currentServer?.premium && (
+              <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded">4K</span>
             )}
             <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${showServerDropdown ? 'rotate-180' : ''}`} />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={autoSelectFastest}
-              disabled={testingServers}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
-            >
-              <HiOutlineLightBulb className="w-3 h-3" />
-              {testingServers ? 'Testing...' : 'Auto'}
-            </button>
-          </div>
+          <button
+            onClick={autoSelectFastest}
+            disabled={testingServers}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+          >
+            <HiOutlineLightBulb className="w-3 h-3" />
+            {testingServers ? 'Testing...' : 'Auto'}
+          </button>
         </div>
 
         {/* Server Dropdown */}
@@ -353,22 +447,39 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
               className="absolute bottom-full left-3 right-3 mb-2 bg-dark-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20"
             >
               <div className="max-h-64 overflow-y-auto p-2">
-                {servers.map((server, index) => (
-                  <button
-                    key={index}
-                    onClick={() => switchServer(index)}
-                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm transition-all ${
-                      selectedServer === index
-                        ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <span>{server.name}</span>
-                    {server.speed !== undefined && (
-                      <span className="text-xs opacity-60">{server.speed}ms</span>
-                    )}
-                  </button>
-                ))}
+                {servers.map((server, index) => {
+                  const locked = server.premium && !isPremiumUser;
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => switchServer(index)}
+                      disabled={locked}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm transition-all ${
+                        selectedServer === index
+                          ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                          : locked
+                          ? 'text-gray-600 cursor-not-allowed opacity-40'
+                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{server.name}</span>
+                        {server.directUrl && (
+                          <span className="px-1.5 py-0.5 bg-green-500/20 text-green-400 text-[10px] rounded">DIRECT</span>
+                        )}
+                        {server.premium && (
+                          <span className="px-1.5 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded">4K</span>
+                        )}
+                        {locked && (
+                          <span className="text-[10px] text-gray-600">🔒 Premium Only</span>
+                        )}
+                      </div>
+                      {server.speed !== undefined && (
+                        <span className="text-xs opacity-60">{server.speed}ms</span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
