@@ -148,8 +148,8 @@ export default function AnimeDetailPage() {
                 {anime.genres.map((genre) => (
                   <Link
                     key={genre}
-                    href={`/search?genre=${genre}`}
-                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-sm rounded-lg transition-colors border border-white/5"
+                    href={`/genre/${encodeURIComponent(genre)}`}
+                    className="px-3 py-1.5 bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 text-sm rounded-lg transition-colors border border-white/5 hover:border-purple-500/30"
                   >
                     {genre}
                   </Link>

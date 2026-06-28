@@ -184,6 +184,29 @@ async function suggestAnime(query) {
   }));
 }
 
+async function getAnimeByGenre(genre, page = 1) {
+  const url = page === 1
+    ? `${BASE_URL}/genres/${encodeURIComponent(genre)}/`
+    : `${BASE_URL}/genres/${encodeURIComponent(genre)}/page/${page}/`;
+  const $ = await fetchPage(url);
+  if (!$) return [];
+
+  const results = [];
+  $('article.bs, .bsx').each((_, el) => {
+    const item = extractItem($, el);
+    if (item.title && item.slug) results.push(item);
+  });
+
+  if (results.length === 0) {
+    $('.listupd .bs, .bigtitle .bs').each((_, el) => {
+      const item = extractItem($, el);
+      if (item.title && item.slug) results.push(item);
+    });
+  }
+
+  return dedupe(results);
+}
+
 async function getAnimeDetail(slug) {
   const cached = await getCachedData(`anime/detail/${slug}`);
   if (cached?.data?.title) return cached.data;
@@ -349,4 +372,4 @@ async function getEpisodeStream(episodeUrl) {
   return { videoUrl, servers };
 }
 
-module.exports = { getHomeAnime, searchAnime, suggestAnime, getAnimeDetail, getEpisodeServers, getEpisodeStream, getOngoingAnime, getCompletedAnime };
+module.exports = { getHomeAnime, searchAnime, suggestAnime, getAnimeDetail, getEpisodeServers, getEpisodeStream, getOngoingAnime, getCompletedAnime, getAnimeByGenre };
