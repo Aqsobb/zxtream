@@ -90,24 +90,29 @@ async function scrapeListPage(url) {
 }
 
 async function getHomeAnime() {
-  const cached = await getCachedData('anime/home');
-  if (cached?.data?.popular?.length > 0) return cached.data;
-
+  // Always scrape live from anichin (no cache for freshness)
   const $ = await fetchPage(BASE_URL);
-  if (!$) return { popular: [], recent: [], schedule: {} };
+  if (!$) {
+    // Fallback to cache if live fails
+    const cached = await getCachedData('anime/home');
+    if (cached?.data?.popular?.length > 0) return cached.data;
+    return { popular: [], ongoing: [] };
+  }
 
   const popular = dedupe($('.popularslider .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
-  const recent = dedupe($('.normal .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
+  const ongoing = dedupe($('.ongoing .bs, .section-ongoing .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
 
-  const result = { popular, recent };
+  const result = { popular, ongoing };
+  // Cache for 5 minutes only
   if (result.popular.length > 0) {
-    await setCachedData('anime/home', result, 30 * 60 * 1000);
+    await setCachedData('anime/home', result, 5 * 60 * 1000);
   }
   return result;
 }
 
 async function getOngoingAnime(page = 1) {
   const cacheKey = `anime/ongoing/${page}`;
+  // Short cache (5 min) for freshness
   const cached = await getCachedData(cacheKey);
   if (cached?.data?.length > 0) return cached.data;
 
@@ -115,7 +120,7 @@ async function getOngoingAnime(page = 1) {
   const results = await scrapeListPage(url);
 
   if (results.length > 0) {
-    await setCachedData(cacheKey, results, 30 * 60 * 1000);
+    await setCachedData(cacheKey, results, 5 * 60 * 1000);
   }
   return results;
 }
@@ -129,31 +134,54 @@ async function getCompletedAnime(page = 1) {
   const results = await scrapeListPage(url);
 
   if (results.length > 0) {
-    await setCachedData(cacheKey, results, 30 * 60 * 1000);
+    await setCachedData(cacheKey, results, 5 * 60 * 1000);
   }
   return results;
 }
 
 async function searchAnime(query) {
-  const indexCache = await getCachedData('search/index');
-  if (indexCache?.data?.length > 0) {
-    const q = query.toLowerCase();
-    return dedupe(indexCache.data.filter(item =>
-      item.title.toLowerCase().includes(q)
-    )).slice(0, 30);
+  // Always scrape live from anichin search
+  const searchUrl = `${BASE_URL}/?s=${encodeURIComponent(query)}`;
+  const $ = await fetchPage(searchUrl);
+  if (!$) {
+    // Fallback to Firebase index if live search fails
+    const indexCache = await getCachedData('search/index');
+    if (indexCache?.data?.length > 0) {
+      const q = query.toLowerCase();
+      return dedupe(indexCache.data.filter(item =>
+        item.title.toLowerCase().includes(q)
+      )).slice(0, 30);
+    }
+    return [];
   }
-  return [];
+
+  const results = [];
+  // anichin search results are in .bs or .bsx elements
+  $('article.bs, .bsx').each((_, el) => {
+    const item = extractItem($, el);
+    if (item.title && item.slug) results.push(item);
+  });
+
+  // Also try .listupd .bs pattern
+  if (results.length === 0) {
+    $('.listupd .bs, .bigtitle .bs').each((_, el) => {
+      const item = extractItem($, el);
+      if (item.title && item.slug) results.push(item);
+    });
+  }
+
+  return dedupe(results).slice(0, 30);
 }
 
 async function suggestAnime(query) {
-  const indexCache = await getCachedData('search/index');
-  if (indexCache?.data?.length > 0) {
-    const q = query.toLowerCase();
-    return dedupe(indexCache.data.filter(item =>
-      item.title.toLowerCase().includes(q)
-    )).slice(0, 8).map(item => ({ title: item.title, slug: item.slug, thumbnail: item.thumbnail, type: item.type }));
-  }
-  return [];
+  // Suggest from live search (first 8 results)
+  const results = await searchAnime(query);
+  return results.slice(0, 8).map(item => ({
+    title: item.title,
+    slug: item.slug,
+    thumbnail: item.thumbnail,
+    type: item.type,
+  }));
 }
 
 async function getAnimeDetail(slug) {
