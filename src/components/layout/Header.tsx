@@ -30,9 +30,22 @@ export default function Header() {
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (stored) {
-      setUser(JSON.parse(stored));
+      const userData = JSON.parse(stored);
+      setUser(userData);
+      fetchNotificationCount(userData.uid);
     }
   }, []);
+
+  const fetchNotificationCount = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/users/notifications?userId=${uid}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const unread = data.data.filter((n: any) => !n.read).length;
+        setNotifications(unread);
+      }
+    } catch {}
+  };
 
   // Close suggestions on outside click
   useEffect(() => {

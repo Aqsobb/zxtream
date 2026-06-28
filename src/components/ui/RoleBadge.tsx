@@ -60,11 +60,8 @@ export function RoleName({ name, role, className = '' }: RoleNameProps) {
       <span
         className="font-bold"
         style={{
-          background: `linear-gradient(135deg, ${config.color}, ${config.color}cc)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          textShadow: config.glow !== 'none' ? `0 0 20px ${config.color}40` : undefined,
+          color: config.color,
+          textShadow: config.glow !== 'none' ? `0 0 12px ${config.color}60` : undefined,
         }}
       >
         {name}
@@ -107,12 +104,15 @@ interface ProfileCardProps {
     level?: number;
     exp?: number;
     title?: string;
+    badges?: string[];
   };
   className?: string;
 }
 
 export function ProfileCard({ user, className = '' }: ProfileCardProps) {
   const config = getRoleConfig(user.role || 'member');
+  const role = user.role || 'member';
+  const isPremium = role === 'owner' || role === 'vvip' || role === 'dev';
 
   return (
     <motion.div
@@ -120,10 +120,47 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
       animate={{ opacity: 1, y: 0 }}
       className={`relative overflow-hidden rounded-2xl border ${config.border} ${className}`}
       style={{
-        background: `linear-gradient(135deg, ${config.color}08, ${config.color}15)`,
         boxShadow: config.glow !== 'none' ? config.glow : undefined,
       }}
     >
+      {/* Banner background for premium users */}
+      {isPremium && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: role === 'owner'
+              ? 'linear-gradient(135deg, #1a0533 0%, #2d1b4e 30%, #4a1942 60%, #1a0533 100%)'
+              : role === 'dev'
+              ? 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)'
+              : `linear-gradient(135deg, ${config.color}30, ${config.color}10, ${config.color}30)`,
+          }}
+        />
+      )}
+      {!isPremium && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${config.color}08, ${config.color}15)`,
+          }}
+        />
+      )}
+
+      {/* Animated border glow for owner/dev */}
+      {(role === 'owner' || role === 'dev') && (
+        <motion.div
+          className="absolute inset-0 rounded-2xl"
+          style={{
+            border: `2px solid transparent`,
+            background: `linear-gradient(135deg, ${config.color}40, transparent, ${config.color}40) border-box`,
+            WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+          }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 3, repeat: Infinity }}
+        />
+      )}
+
       {/* Background particles for special roles */}
       {config.particles && (
         <div className="absolute inset-0 pointer-events-none">
@@ -157,6 +194,7 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
               className="w-20 h-20 rounded-2xl object-cover"
               style={{
                 boxShadow: config.glow !== 'none' ? `0 0 20px ${config.color}40` : undefined,
+                border: `2px solid ${config.color}60`,
               }}
             />
             {config.crown && (
@@ -168,19 +206,28 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
                 👑
               </motion.div>
             )}
+            {role === 'vvip' && (
+              <motion.div
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute -bottom-1 -right-1 text-lg"
+              >
+                💎
+              </motion.div>
+            )}
           </div>
 
           {/* Info */}
-          <div className="flex-1">
-            <RoleName name={user.displayName} role={user.role || 'member'} className="text-xl" />
+          <div className="flex-1 min-w-0">
+            <RoleName name={user.displayName} role={role} className="text-xl" />
             <div className="flex items-center gap-3 mt-1">
-              <RoleBadge role={user.role || 'member'} size="sm" />
+              <RoleBadge role={role} size="sm" />
               <span className="text-sm text-gray-400">
                 Level {user.level || 1}
               </span>
             </div>
             {user.title && (
-              <p className="text-sm text-gray-400 mt-1 italic">{user.title}</p>
+              <p className="text-sm text-gray-300 mt-1 italic">{user.title}</p>
             )}
           </div>
         </div>

@@ -6,7 +6,7 @@ import {
   HiOutlinePlay, HiOutlinePause, HiOutlineCog, HiOutlineX,
   HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlineLightBulb,
   HiOutlineVolumeUp, HiOutlineVolumeOff, HiOutlineArrowSmRight,
-  HiOutlineArrowsExpand, HiOutlineClock,
+  HiOutlineArrowsExpand, HiOutlineClock, HiOutlineChevronDown,
 } from 'react-icons/hi';
 import { API_BASE } from '@/lib/config';
 
@@ -35,10 +35,9 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
   const [selectedServer, setSelectedServer] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showServerDropdown, setShowServerDropdown] = useState(false);
   const [testingServers, setTestingServers] = useState(false);
   const [autoSelected, setAutoSelected] = useState(false);
-  const [showSkipOP, setShowSkipOP] = useState(false);
-  const [showSkipED, setShowSkipED] = useState(false);
   const [pipActive, setPipActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -49,33 +48,22 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
   const controlsTimerRef = useRef<NodeJS.Timeout>();
   const saveTimerRef = useRef<NodeJS.Timeout>();
 
-  // Auto-select fastest server
   useEffect(() => {
     if (servers.length <= 1) return;
     autoSelectFastest();
   }, [servers]);
 
-  // Resume playback check
   useEffect(() => {
     checkResume();
   }, [episodeId]);
 
-  // Save progress periodically
   useEffect(() => {
     saveTimerRef.current = setInterval(() => {
       saveProgress();
-    }, 30000); // every 30 seconds
+    }, 30000);
     return () => clearInterval(saveTimerRef.current);
   }, [episodeId]);
 
-  // Simulate OP/ED timing (typically OP at start, ED at end)
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSkipOP(true), 5000);
-    const edTimer = setTimeout(() => setShowSkipED(true), 900000); // 15 min
-    return () => { clearTimeout(timer); clearTimeout(edTimer); };
-  }, [episodeId]);
-
-  // Hide controls on idle
   const resetControlsTimer = useCallback(() => {
     setShowControls(true);
     if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
@@ -87,7 +75,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
     return () => clearTimeout(controlsTimerRef.current);
   }, []);
 
-  // Fullscreen change listener
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handler);
@@ -158,6 +145,7 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
 
   const switchServer = (index: number) => {
     setSelectedServer(index);
+    setShowServerDropdown(false);
     setShowSettings(false);
     onServerChange?.(index);
   };
@@ -177,7 +165,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
         await document.exitPictureInPicture();
         setPipActive(false);
       } else if (iframeRef.current) {
-        // PiP for iframe is limited, try on container
         const video = document.querySelector('video');
         if (video) {
           await video.requestPictureInPicture();
@@ -266,39 +253,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
           </div>
         )}
 
-        {/* Skip OP Button */}
-        <AnimatePresence>
-          {showSkipOP && (
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              onClick={() => setShowSkipOP(false)}
-              className="absolute bottom-20 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium text-white hover:bg-white/30 transition-all z-20"
-            >
-              Skip Opening ▸▸
-            </motion.button>
-          )}
-        </AnimatePresence>
-
-        {/* Skip ED Button */}
-        <AnimatePresence>
-          {showSkipED && (
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              onClick={() => {
-                setShowSkipED(false);
-                goToEpisode('next');
-              }}
-              className="absolute bottom-20 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium text-white hover:bg-white/30 transition-all z-20"
-            >
-              Skip Ending ▸▸
-            </motion.button>
-          )}
-        </AnimatePresence>
-
         {/* Controls overlay */}
         <AnimatePresence>
           {showControls && (
@@ -363,34 +317,62 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, o
         </AnimatePresence>
       </div>
 
-      {/* Server Selection Bar */}
-      <div className="p-3 bg-dark-800 border-t border-white/5">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          {servers.map((server, index) => (
-            <button
-              key={index}
-              onClick={() => switchServer(index)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                selectedServer === index
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              {server.name}
-              {server.speed !== undefined && (
-                <span className="text-[10px] opacity-60">{server.speed}ms</span>
-              )}
-            </button>
-          ))}
+      {/* Server Selection - Single button with dropdown */}
+      <div className="p-3 bg-dark-800 border-t border-white/5 relative">
+        <div className="flex items-center justify-between">
           <button
-            onClick={autoSelectFastest}
-            disabled={testingServers}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+            onClick={() => setShowServerDropdown(!showServerDropdown)}
+            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-white hover:bg-white/10 transition-all"
           >
-            <HiOutlineLightBulb className="w-3 h-3" />
-            {testingServers ? 'Testing...' : 'Auto'}
+            <span className="text-gray-400">Server:</span>
+            <span className="font-medium">{currentServer?.name || 'Unknown'}</span>
+            {currentServer?.speed !== undefined && (
+              <span className="text-[10px] text-gray-500">({currentServer.speed}ms)</span>
+            )}
+            <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${showServerDropdown ? 'rotate-180' : ''}`} />
           </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={autoSelectFastest}
+              disabled={testingServers}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all"
+            >
+              <HiOutlineLightBulb className="w-3 h-3" />
+              {testingServers ? 'Testing...' : 'Auto'}
+            </button>
+          </div>
         </div>
+
+        {/* Server Dropdown */}
+        <AnimatePresence>
+          {showServerDropdown && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute bottom-full left-3 right-3 mb-2 bg-dark-800 border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20"
+            >
+              <div className="max-h-64 overflow-y-auto p-2">
+                {servers.map((server, index) => (
+                  <button
+                    key={index}
+                    onClick={() => switchServer(index)}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm transition-all ${
+                      selectedServer === index
+                        ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-white border border-purple-500/30'
+                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <span>{server.name}</span>
+                    {server.speed !== undefined && (
+                      <span className="text-xs opacity-60">{server.speed}ms</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

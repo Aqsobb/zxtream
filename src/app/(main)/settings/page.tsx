@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineUser, HiOutlineCog, HiOutlineShieldCheck, HiOutlineBell, HiOutlineLogout, HiOutlineGlobe } from 'react-icons/hi';
+import { HiOutlineUser, HiOutlineCog, HiOutlineShieldCheck, HiOutlineBell, HiOutlineLogout, HiOutlineGlobe, HiOutlineUserGroup } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -25,6 +25,12 @@ export default function SettingsPage() {
   const [primaryColor, setPrimaryColor] = useState('#a78bfa');
   const [accentColor, setAccentColor] = useState('#ec4899');
   const [savingSite, setSavingSite] = useState(false);
+
+  // Admin user management
+  const [adminTargetUid, setAdminTargetUid] = useState('');
+  const [adminTargetTitle, setAdminTargetTitle] = useState('');
+  const [adminTargetRole, setAdminTargetRole] = useState('');
+  const [savingAdmin, setSavingAdmin] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -109,13 +115,43 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveAdminUser = async () => {
+    if (!user || !adminTargetUid) return;
+    setSavingAdmin(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/users/profile/${adminTargetUid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterUid: user.uid,
+          title: adminTargetTitle || undefined,
+          role: adminTargetRole || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('User updated!');
+        setAdminTargetUid('');
+        setAdminTargetTitle('');
+        setAdminTargetRole('');
+      } else {
+        alert(data.error || 'Failed to update user');
+      }
+    } catch {} finally {
+      setSavingAdmin(false);
+    }
+  };
+
   const isOwner = user?.role === 'owner' || user?.isOwner;
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: HiOutlineUser },
     { id: 'preferences', label: 'Preferences', icon: HiOutlineCog },
     { id: 'security', label: 'Security', icon: HiOutlineShieldCheck },
-    ...(isOwner ? [{ id: 'site', label: 'Site Settings', icon: HiOutlineGlobe }] : []),
+    ...(isOwner ? [
+      { id: 'site', label: 'Site Settings', icon: HiOutlineGlobe },
+      { id: 'admin-users', label: 'Manage Users', icon: HiOutlineUserGroup },
+    ] : []),
   ];
 
   return (
@@ -220,15 +256,7 @@ export default function SettingsPage() {
                   </label>
                   <label className="flex items-center justify-between">
                     <span>Auto Next Episode</span>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span>Skip Intro</span>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span>Skip Ending</span>
-                    <input type="checkbox" className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
+                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-600 text-primary-600" />
                   </label>
                   <div>
                     <label className="block text-sm font-medium text-dark-300 mb-1">Default Quality</label>
@@ -348,6 +376,62 @@ export default function SettingsPage() {
                       Admin Panel
                     </Link>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'admin-users' && isOwner && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass p-6 rounded-2xl"
+              >
+                <h2 className="text-lg font-bold mb-4">Manage User</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Change user titles and roles. Enter the user's UID.
+                </p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-dark-300 mb-1">User UID</label>
+                    <input
+                      type="text"
+                      value={adminTargetUid}
+                      onChange={(e) => setAdminTargetUid(e.target.value)}
+                      className="input"
+                      placeholder="e.g. 33333"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-300 mb-1">Custom Title</label>
+                    <input
+                      type="text"
+                      value={adminTargetTitle}
+                      onChange={(e) => setAdminTargetTitle(e.target.value)}
+                      className="input"
+                      placeholder="e.g. Legend of Streams"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-dark-300 mb-1">Role</label>
+                    <select
+                      value={adminTargetRole}
+                      onChange={(e) => setAdminTargetRole(e.target.value)}
+                      className="input"
+                    >
+                      <option value="">Keep current</option>
+                      <option value="member">Member</option>
+                      <option value="vip">VIP ⭐</option>
+                      <option value="vvip">VVIP 💎</option>
+                      <option value="owner">Owner 👑</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleSaveAdminUser}
+                    disabled={savingAdmin || !adminTargetUid}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {savingAdmin ? 'Saving...' : 'Update User'}
+                  </button>
                 </div>
               </motion.div>
             )}
