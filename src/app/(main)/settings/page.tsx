@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { HiOutlineUser, HiOutlineCog, HiOutlineShieldCheck, HiOutlineBell, HiOutlineLogout, HiOutlineGlobe, HiOutlineUserGroup } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
+import PushNotificationManager from '@/components/ui/PushNotificationManager';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { API_BASE } from '@/lib/config';
@@ -246,29 +247,32 @@ export default function SettingsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass p-6 rounded-2xl"
+                className="space-y-6"
               >
-                <h2 className="text-lg font-bold mb-4">Player Preferences</h2>
-                <div className="space-y-4">
-                  <label className="flex items-center justify-between">
-                    <span>Auto Play</span>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
-                  </label>
-                  <label className="flex items-center justify-between">
-                    <span>Auto Next Episode</span>
-                    <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-600 text-primary-600" />
-                  </label>
-                  <div>
-                    <label className="block text-sm font-medium text-dark-300 mb-1">Default Quality</label>
-                    <select className="input">
-                      <option value="auto">Auto</option>
-                      <option value="360p">360p</option>
-                      <option value="480p">480p</option>
-                      <option value="720p">720p</option>
-                      <option value="1080p">1080p</option>
-                    </select>
+                <div className="glass p-6 rounded-2xl">
+                  <h2 className="text-lg font-bold mb-4">Player Preferences</h2>
+                  <div className="space-y-4">
+                    <label className="flex items-center justify-between">
+                      <span>Auto Play</span>
+                      <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span>Auto Next Episode</span>
+                      <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-600 text-primary-600" />
+                    </label>
+                    <div>
+                      <label className="block text-sm font-medium text-dark-300 mb-1">Default Quality</label>
+                      <select className="input">
+                        <option value="auto">Auto</option>
+                        <option value="360p">360p</option>
+                        <option value="480p">480p</option>
+                        <option value="720p">720p</option>
+                        <option value="1080p">1080p</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
+                <PushNotificationManager />
               </motion.div>
             )}
 
