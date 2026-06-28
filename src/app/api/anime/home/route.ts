@@ -16,7 +16,6 @@ export async function GET() {
       success: true,
       data: {
         popular: homeData.popular,
-        recent: homeData.recent,
         ongoing,
       },
     });

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { HiOutlineUser, HiOutlineCog, HiOutlineShieldCheck, HiOutlineBell, HiOutlineLogout, HiOutlineGlobe } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';

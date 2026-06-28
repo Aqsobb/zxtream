@@ -1,8 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineCog, HiOutlinePlus, HiOutlineTrash, HiOutlineShieldCheck, HiOutlineBan, HiOutlineUserGroup } from 'react-icons/hi';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import {
+  HiOutlineCog, HiOutlinePlus, HiOutlineTrash, HiOutlineShieldCheck,
+  HiOutlineBan, HiOutlineUserGroup, HiOutlineColorSwatch, HiOutlineChat,
+  HiOutlineBell, HiOutlineChartBar, HiOutlineLink, HiOutlineGlobe,
+} from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import RoleBadge from '@/components/ui/RoleBadge';
 import { API_BASE } from '@/lib/config';
@@ -28,15 +33,31 @@ interface Code {
   createdAt: number;
 }
 
+interface Comment {
+  id: string;
+  type: string;
+  targetId: string;
+  uid: string;
+  displayName: string;
+  photoURL: string;
+  text: string;
+  createdAt: number;
+}
+
+type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast';
+
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isOwner, setIsOwner] = useState(false);
-  const [tab, setTab] = useState<'codes' | 'users'>('codes');
+  const [tab, setTab] = useState<Tab>('overview');
   const [users, setUsers] = useState<User[]>([]);
   const [codes, setCodes] = useState<Record<string, Code>>({});
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userSearch, setUserSearch] = useState('');
 
-  // Generate code form
+  // Code form
   const [codeType, setCodeType] = useState('vip');
   const [codeValue, setCodeValue] = useState('30');
   const [codeMaxUses, setCodeMaxUses] = useState('1');
@@ -44,26 +65,54 @@ export default function AdminPage() {
   const [generating, setGenerating] = useState(false);
   const [newCode, setNewCode] = useState('');
 
+  // Theme form
+  const [siteName, setSiteName] = useState('Z.XTREAM');
+  const [siteDesc, setSiteDesc] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#a78bfa');
+  const [accentColor, setAccentColor] = useState('#ec4899');
+  const [telegramLink, setTelegramLink] = useState('');
+  const [savingTheme, setSavingTheme] = useState(false);
+
+  // Broadcast form
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     setCurrentUser(user);
     setIsOwner(user?.role === 'owner' || user?.isOwner === true);
     if (user?.role === 'owner' || user?.isOwner) {
-      fetchData();
+      fetchAll();
     }
   }, []);
 
-  const fetchData = async () => {
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const [usersRes, codesRes] = await Promise.all([
+      const [usersRes, codesRes, analyticsRes, commentsRes, themeRes] = await Promise.all([
         fetch(`${API_BASE}/api/admin/users`),
         fetch(`${API_BASE}/api/admin/codes`),
+        fetch(`${API_BASE}/api/admin/analytics`),
+        fetch(`${API_BASE}/api/admin/comments`),
+        fetch(`${API_BASE}/api/admin/theme`),
       ]);
       const usersData = await usersRes.json();
       const codesData = await codesRes.json();
+      const analyticsData = await analyticsRes.json();
+      const commentsData = await commentsRes.json();
+      const themeData = await themeRes.json();
       if (usersData.success) setUsers(usersData.data);
       if (codesData.success) setCodes(codesData.data || {});
+      if (analyticsData.success) setAnalytics(analyticsData.data);
+      if (commentsData.success) setComments(commentsData.data || []);
+      if (themeData.success && themeData.data) {
+        setSiteName(themeData.data.siteName || 'Z.XTREAM');
+        setSiteDesc(themeData.data.siteDescription || '');
+        setPrimaryColor(themeData.data.primaryColor || '#a78bfa');
+        setAccentColor(themeData.data.accentColor || '#ec4899');
+        setTelegramLink(themeData.data.telegramLink || '');
+      }
     } catch (e) {
       console.error('Failed to fetch admin data:', e);
     } finally {
@@ -71,6 +120,7 @@ export default function AdminPage() {
     }
   };
 
+  // Generate code
   const handleGenerateCode = async () => {
     if (!currentUser) return;
     setGenerating(true);
@@ -89,7 +139,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) {
         setNewCode(data.data.code);
-        fetchData();
+        fetchAll();
       }
     } catch (e) {
       console.error('Failed to generate:', e);
@@ -98,6 +148,18 @@ export default function AdminPage() {
     }
   };
 
+  // Delete code
+  const handleDeleteCode = async (code: string) => {
+    if (!currentUser || !confirm(`Delete code "${code}"?`)) return;
+    await fetch(`${API_BASE}/api/admin/codes`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, requesterUid: currentUser.uid }),
+    });
+    fetchAll();
+  };
+
+  // Set role
   const handleSetRole = async (uid: string, role: string) => {
     if (!currentUser) return;
     await fetch(`${API_BASE}/api/admin/role`, {
@@ -105,9 +167,10 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, role, requesterUid: currentUser.uid }),
     });
-    fetchData();
+    fetchAll();
   };
 
+  // Ban/Unban
   const handleBan = async (uid: string) => {
     if (!currentUser) return;
     await fetch(`${API_BASE}/api/admin/ban`, {
@@ -115,7 +178,7 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
     });
-    fetchData();
+    fetchAll();
   };
 
   const handleUnban = async (uid: string) => {
@@ -125,9 +188,10 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
     });
-    fetchData();
+    fetchAll();
   };
 
+  // Delete user
   const handleDeleteUser = async (uid: string) => {
     if (!currentUser || !confirm('Delete this user permanently?')) return;
     await fetch(`${API_BASE}/api/admin/delete-user`, {
@@ -135,7 +199,63 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
     });
-    fetchData();
+    fetchAll();
+  };
+
+  // Delete comment
+  const handleDeleteComment = async (comment: Comment) => {
+    if (!currentUser || !confirm('Delete this comment?')) return;
+    await fetch(`${API_BASE}/api/admin/comments`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commentId: comment.id,
+        type: comment.type,
+        targetId: comment.targetId,
+        requesterUid: currentUser.uid,
+      }),
+    });
+    fetchAll();
+  };
+
+  // Save theme
+  const handleSaveTheme = async () => {
+    if (!currentUser) return;
+    setSavingTheme(true);
+    try {
+      await fetch(`${API_BASE}/api/admin/theme`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterUid: currentUser.uid,
+          settings: { siteName, siteDescription: siteDesc, primaryColor, accentColor, telegramLink },
+        }),
+      });
+    } catch {} finally {
+      setSavingTheme(false);
+    }
+  };
+
+  // Broadcast
+  const handleBroadcast = async () => {
+    if (!currentUser || !broadcastTitle.trim() || !broadcastMsg.trim()) return;
+    setSendingBroadcast(true);
+    try {
+      await fetch(`${API_BASE}/api/admin/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requesterUid: currentUser.uid,
+          title: broadcastTitle.trim(),
+          message: broadcastMsg.trim(),
+        }),
+      });
+      setBroadcastTitle('');
+      setBroadcastMsg('');
+      alert('Broadcast sent!');
+    } catch {} finally {
+      setSendingBroadcast(false);
+    }
   };
 
   if (!isOwner) {
@@ -152,6 +272,15 @@ export default function AdminPage() {
     );
   }
 
+  const tabs: { id: Tab; label: string; icon: any }[] = [
+    { id: 'overview', label: 'Overview', icon: HiOutlineChartBar },
+    { id: 'users', label: 'Users', icon: HiOutlineUserGroup },
+    { id: 'codes', label: 'Codes', icon: HiOutlinePlus },
+    { id: 'theme', label: 'Theme', icon: HiOutlineColorSwatch },
+    { id: 'comments', label: 'Comments', icon: HiOutlineChat },
+    { id: 'broadcast', label: 'Broadcast', icon: HiOutlineBell },
+  ];
+
   return (
     <MainLayout>
       <div className="p-4 lg:p-6 max-w-6xl mx-auto">
@@ -162,169 +291,301 @@ export default function AdminPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
-          <button
-            onClick={() => setTab('codes')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              tab === 'codes' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+                tab === t.id
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              <t.icon className="w-4 h-4" />
+              {t.label}
+            </button>
+          ))}
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-white/5 text-gray-400 hover:bg-white/10 whitespace-nowrap transition-all"
           >
-            <HiOutlinePlus className="w-4 h-4 inline mr-1" />
-            Generate Codes
-          </button>
-          <button
-            onClick={() => setTab('users')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              tab === 'users' ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-            }`}
-          >
-            <HiOutlineUserGroup className="w-4 h-4 inline mr-1" />
-            Manage Users ({users.length})
-          </button>
+            <HiOutlineGlobe className="w-4 h-4" />
+            Settings
+          </Link>
         </div>
 
         {loading ? (
           <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />)}
-          </div>
-        ) : tab === 'codes' ? (
-          <div className="space-y-6">
-            {/* Generate form */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-              <h2 className="text-lg font-bold mb-4">Generate New Code</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Type</label>
-                  <select
-                    value={codeType}
-                    onChange={(e) => setCodeType(e.target.value)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50"
-                  >
-                    <option value="owner">Owner</option>
-                    <option value="vvip">VVIP</option>
-                    <option value="vip">VIP</option>
-                    <option value="premium">Premium</option>
-                    <option value="exp">EXP</option>
-                    <option value="coins">Coins</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">
-                    {codeType === 'premium' ? 'Days' : codeType === 'exp' || codeType === 'coins' ? 'Amount' : 'Role'}
-                  </label>
-                  <input
-                    type={codeType === 'premium' || codeType === 'exp' || codeType === 'coins' ? 'number' : 'text'}
-                    value={codeValue}
-                    onChange={(e) => setCodeValue(e.target.value)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50"
-                    disabled={codeType !== 'premium' && codeType !== 'exp' && codeType !== 'coins'}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Max Uses</label>
-                  <input
-                    type="number"
-                    value={codeMaxUses}
-                    onChange={(e) => setCodeMaxUses(e.target.value)}
-                    min="1"
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Description</label>
-                  <input
-                    type="text"
-                    value={codeDesc}
-                    onChange={(e) => setCodeDesc(e.target.value)}
-                    placeholder="Optional"
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleGenerateCode}
-                disabled={generating}
-                className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all"
-              >
-                {generating ? 'Generating...' : 'Generate Code'}
-              </button>
-
-              {newCode && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl"
-                >
-                  <p className="text-sm text-green-400">New code generated:</p>
-                  <p className="text-xl font-mono font-bold text-white tracking-widest mt-1">{newCode}</p>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Existing codes */}
-            <div>
-              <h2 className="text-lg font-bold mb-3">Existing Codes</h2>
-              <div className="space-y-2">
-                {Object.entries(codes).map(([code, data]) => {
-                  const uses = data.usedBy ? Object.keys(data.usedBy).length : 0;
-                  return (
-                    <div key={code} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl">
-                      <span className="font-mono text-sm text-white tracking-wider">{code}</span>
-                      <RoleBadge role={data.type} size="sm" showLabel={data.type !== 'exp' && data.type !== 'coins'} />
-                      <span className="text-xs text-gray-500">{uses}/{data.maxUses} used</span>
-                      {data.description && <span className="text-xs text-gray-400 ml-auto">{data.description}</span>}
-                    </div>
-                  );
-                })}
-                {Object.keys(codes).length === 0 && (
-                  <p className="text-gray-500 text-center py-4">No codes generated yet</p>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Users tab */
-          <div className="space-y-2">
-            {users.map((user) => (
-              <div key={user.uid} className={`flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl ${user.banned ? 'opacity-50' : ''}`}>
-                <img
-                  src={user.photoURL || '/images/default-avatar.png'}
-                  alt=""
-                  className="w-10 h-10 rounded-full flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate">{user.displayName}</span>
-                    <RoleBadge role={user.role} size="sm" showLabel={false} />
-                    {user.banned && <span className="text-xs text-red-400">BANNED</span>}
-                  </div>
-                  <p className="text-xs text-gray-500">{user.uid} | Lvl {user.level} | {user.totalExp} EXP</p>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleSetRole(user.uid, e.target.value)}
-                    className="px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-xs text-white focus:outline-none"
-                  >
-                    <option value="member">Member</option>
-                    <option value="premium">Premium</option>
-                    <option value="vip">VIP</option>
-                    <option value="vvip">VVIP</option>
-                  </select>
-                  {user.banned ? (
-                    <button onClick={() => handleUnban(user.uid)} className="px-2 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs">Unban</button>
-                  ) : (
-                    <button onClick={() => handleBan(user.uid)} className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs">Ban</button>
-                  )}
-                  {!user.isOwner && (
-                    <button onClick={() => handleDeleteUser(user.uid)} className="px-2 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs">
-                      <HiOutlineTrash className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-white/5 rounded-xl animate-pulse" />
             ))}
           </div>
+        ) : (
+          <>
+            {/* OVERVIEW TAB */}
+            {tab === 'overview' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Users', value: analytics?.totalUsers || 0, color: 'purple' },
+                    { label: 'Total Codes', value: analytics?.totalCodes || 0, color: 'green' },
+                    { label: 'Banned Users', value: analytics?.bannedUsers || 0, color: 'red' },
+                    { label: 'Total Views', value: analytics?.totalViews || 0, color: 'blue' },
+                  ].map((stat) => (
+                    <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                      <p className="text-sm text-gray-400">{stat.label}</p>
+                      <p className={`text-2xl font-bold text-${stat.color}-400 mt-1`}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <h3 className="font-bold mb-3">Role Distribution</h3>
+                  <div className="flex gap-4 flex-wrap">
+                    {Object.entries(analytics?.roles || {}).map(([role, count]) => (
+                      <div key={role} className="flex items-center gap-2">
+                        <RoleBadge role={role} size="sm" />
+                        <span className="text-sm text-gray-400">× {count as number}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* USERS TAB */}
+            {tab === 'users' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search users..."
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm mb-4 focus:outline-none focus:border-purple-500/50"
+                />
+                <div className="space-y-2">
+                  {users
+                    .filter(u => !userSearch || u.displayName?.toLowerCase().includes(userSearch.toLowerCase()) || u.uid.includes(userSearch))
+                    .map((user) => (
+                    <div key={user.uid} className={`flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl ${user.banned ? 'opacity-50' : ''}`}>
+                      <img src={user.photoURL || '/images/default-avatar.png'} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium truncate">{user.displayName}</span>
+                          <RoleBadge role={user.role} size="sm" showLabel={false} />
+                          {user.banned && <span className="text-xs text-red-400">BANNED</span>}
+                        </div>
+                        <p className="text-xs text-gray-500">{user.uid} | Lvl {user.level} | {user.totalExp} EXP</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleSetRole(user.uid, e.target.value)}
+                          className="px-2 py-1 bg-white/5 border border-white/10 rounded-lg text-xs text-white focus:outline-none"
+                        >
+                          <option value="member">Member</option>
+                          <option value="vip">VIP</option>
+                          <option value="vvip">VVIP</option>
+                        </select>
+                        {user.banned ? (
+                          <button onClick={() => handleUnban(user.uid)} className="px-2 py-1 bg-green-500/20 text-green-400 rounded-lg text-xs">Unban</button>
+                        ) : (
+                          <button onClick={() => handleBan(user.uid)} className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs">Ban</button>
+                        )}
+                        {!user.isOwner && (
+                          <button onClick={() => handleDeleteUser(user.uid)} className="px-2 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs">
+                            <HiOutlineTrash className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* CODES TAB */}
+            {tab === 'codes' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                  <h2 className="text-lg font-bold mb-4">Generate New Code</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Type</label>
+                      <select value={codeType} onChange={(e) => setCodeType(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50">
+                        <option value="owner">Owner</option>
+                        <option value="vvip">VVIP</option>
+                        <option value="vip">VIP</option>
+                        <option value="premium">Premium</option>
+                        <option value="exp">EXP</option>
+                        <option value="coins">Coins</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">
+                        {codeType === 'premium' ? 'Days' : codeType === 'exp' || codeType === 'coins' ? 'Amount' : 'Role'}
+                      </label>
+                      <input
+                        type={codeType === 'premium' || codeType === 'exp' || codeType === 'coins' ? 'number' : 'text'}
+                        value={codeValue}
+                        onChange={(e) => setCodeValue(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50"
+                        disabled={codeType !== 'premium' && codeType !== 'exp' && codeType !== 'coins'}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Max Uses</label>
+                      <input type="number" value={codeMaxUses} onChange={(e) => setCodeMaxUses(e.target.value)} min="1"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Description</label>
+                      <input type="text" value={codeDesc} onChange={(e) => setCodeDesc(e.target.value)} placeholder="Optional"
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                    </div>
+                  </div>
+                  <button onClick={handleGenerateCode} disabled={generating}
+                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all">
+                    {generating ? 'Generating...' : 'Generate Code'}
+                  </button>
+                  {newCode && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                      <p className="text-sm text-green-400">New code generated:</p>
+                      <p className="text-xl font-mono font-bold text-white tracking-widest mt-1">{newCode}</p>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold mb-3">Existing Codes</h2>
+                  <div className="space-y-2">
+                    {Object.entries(codes).map(([code, data]) => {
+                      const uses = data.usedBy ? Object.keys(data.usedBy).length : 0;
+                      return (
+                        <div key={code} className="flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl">
+                          <span className="font-mono text-sm text-white tracking-wider">{code}</span>
+                          <RoleBadge role={data.type} size="sm" showLabel={data.type !== 'exp' && data.type !== 'coins'} />
+                          <span className="text-xs text-gray-500">{uses}/{data.maxUses} used</span>
+                          {data.description && <span className="text-xs text-gray-400 ml-auto">{data.description}</span>}
+                          <button onClick={() => handleDeleteCode(code)}
+                            className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {Object.keys(codes).length === 0 && <p className="text-gray-500 text-center py-4">No codes generated yet</p>}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* THEME TAB */}
+            {tab === 'theme' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h2 className="text-lg font-bold mb-4">Site Theme</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Site Name</label>
+                    <input type="text" value={siteName} onChange={(e) => setSiteName(e.target.value)}
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Site Description</label>
+                    <textarea value={siteDesc} onChange={(e) => setSiteDesc(e.target.value)} rows={2}
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Primary Color</label>
+                      <div className="flex gap-2">
+                        <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="w-10 h-10 rounded-lg cursor-pointer border-0" />
+                        <input type="text" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-1 block">Accent Color</label>
+                      <div className="flex gap-2">
+                        <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                          className="w-10 h-10 rounded-lg cursor-pointer border-0" />
+                        <input type="text" value={accentColor} onChange={(e) => setAccentColor(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none" />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Telegram Group Link</label>
+                    <div className="flex gap-2">
+                      <HiOutlineLink className="w-5 h-5 text-gray-400 mt-2" />
+                      <input type="url" value={telegramLink} onChange={(e) => setTelegramLink(e.target.value)}
+                        placeholder="https://t.me/..."
+                        className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                    </div>
+                  </div>
+                  <button onClick={handleSaveTheme} disabled={savingTheme}
+                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all">
+                    {savingTheme ? 'Saving...' : 'Save Theme'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* COMMENTS TAB */}
+            {tab === 'comments' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <p className="text-sm text-gray-400 mb-4">{comments.length} total comments</p>
+                <div className="space-y-2">
+                  {comments.slice(0, 50).map((c) => (
+                    <div key={c.id} className="flex items-start gap-3 p-3 bg-white/5 border border-white/5 rounded-xl">
+                      <img src={c.photoURL || '/images/default-avatar.png'} alt="" className="w-8 h-8 rounded-full flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{c.displayName}</span>
+                          <span className="text-xs text-gray-500">on {c.targetId}</span>
+                        </div>
+                        <p className="text-sm text-gray-300 mt-1 line-clamp-2">{c.text}</p>
+                      </div>
+                      <button onClick={() => handleDeleteComment(c)}
+                        className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0">
+                        <HiOutlineTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* BROADCAST TAB */}
+            {tab === 'broadcast' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h2 className="text-lg font-bold mb-4">Broadcast Notification</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Title</label>
+                    <input type="text" value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)}
+                      placeholder="Notification title..."
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Message</label>
+                    <textarea value={broadcastMsg} onChange={(e) => setBroadcastMsg(e.target.value)} rows={4}
+                      placeholder="Write your broadcast message..."
+                      className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50 resize-none" />
+                  </div>
+                  <button onClick={handleBroadcast} disabled={sendingBroadcast || !broadcastTitle.trim() || !broadcastMsg.trim()}
+                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 transition-all">
+                    {sendingBroadcast ? 'Sending...' : 'Send Broadcast'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </>
         )}
       </div>
     </MainLayout>

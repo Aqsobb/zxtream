@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
-import * as adminDb from '@/lib/server/admin-db';
 import * as userDb from '@/lib/server/user-db';
 
 const DB_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL!;
@@ -15,22 +14,24 @@ async function isOwner(uid: string): Promise<boolean> {
   } catch { return false; }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const data = await adminDb.getAllCodes();
-    return NextResponse.json({ success: true, data });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
-  }
-}
+    const url = API_KEY ? `${DB_URL}/comments.json?auth=${API_KEY}` : `${DB_URL}/comments.json`;
+    const { data } = await axios.get(url);
+    if (!data) return NextResponse.json({ success: true, data: [] });
 
-export async function POST(req: NextRequest) {
-  try {
-    const { type, value, maxUses, description, requesterUid } = await req.json();
-    if (!requesterUid) return NextResponse.json({ success: false, error: 'Missing requesterUid' }, { status: 400 });
-    if (!(await isOwner(requesterUid))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
-    const result = await adminDb.generateCode(type, value, maxUses, description);
-    return NextResponse.json({ success: true, data: result });
+    const allComments: any[] = [];
+    for (const [type, targets] of Object.entries(data as Record<string, any>)) {
+      for (const [targetId, comments] of Object.entries(targets as Record<string, any>)) {
+        if (typeof comments === 'object' && comments !== null) {
+          for (const [id, comment] of Object.entries(comments)) {
+            allComments.push({ id, type, targetId, ...(comment as any) });
+          }
+        }
+      }
+    }
+    allComments.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return NextResponse.json({ success: true, data: allComments });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }
@@ -38,14 +39,13 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { code, requesterUid } = await req.json();
+    const { commentId, type, targetId, requesterUid } = await req.json();
     if (!requesterUid) return NextResponse.json({ success: false, error: 'Missing requesterUid' }, { status: 400 });
     if (!(await isOwner(requesterUid))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
-    if (!code) return NextResponse.json({ success: false, error: 'Missing code' }, { status: 400 });
 
     const url = API_KEY
-      ? `${DB_URL}/codes/${code}.json?auth=${API_KEY}`
-      : `${DB_URL}/codes/${code}.json`;
+      ? `${DB_URL}/comments/${type}/${targetId}/${commentId}.json?auth=${API_KEY}`
+      : `${DB_URL}/comments/${type}/${targetId}/${commentId}.json`;
     await axios.delete(url);
     return NextResponse.json({ success: true });
   } catch (e: any) {

@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineFire, HiOutlineClock, HiOutlineChevronRight, HiOutlineChevronLeft, HiOutlinePlay, HiOutlineCollection } from 'react-icons/hi';
+import { HiOutlineFire, HiOutlineChevronRight, HiOutlinePlay } from 'react-icons/hi';
 import AnimeCard from './AnimeCard';
-import EpisodeCard from './EpisodeCard';
 import { API_BASE } from '@/lib/config';
 
 interface AnimeItem {
@@ -19,22 +18,10 @@ interface AnimeItem {
   url: string;
 }
 
-interface EpisodeItem {
-  title: string;
-  slug: string;
-  thumbnail: string;
-  episode?: string;
-  episodeNum?: string;
-  type?: string;
-  url: string;
-}
-
 export default function HomeContent() {
   const [popular, setPopular] = useState<AnimeItem[]>([]);
-  const [recent, setRecent] = useState<EpisodeItem[]>([]);
   const [ongoing, setOngoing] = useState<AnimeItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/anime/home`)
@@ -42,7 +29,6 @@ export default function HomeContent() {
       .then(d => {
         if (d.success) {
           setPopular(d.data.popular || []);
-          setRecent(d.data.recent || []);
           setOngoing(d.data.ongoing || []);
         }
       })
@@ -50,23 +36,13 @@ export default function HomeContent() {
       .finally(() => setLoading(false));
   }, []);
 
-  const scrollCarousel = (dir: 'left' | 'right') => {
-    if (!carouselRef.current) return;
-    carouselRef.current.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' });
-  };
-
   if (loading) {
     return (
       <div className="p-4 lg:p-6 space-y-10">
-        {/* Hero skeleton */}
         <div className="h-48 bg-white/5 rounded-3xl animate-pulse" />
-        {/* Section skeletons */}
-        {[1, 2, 3].map(s => (
+        {[1, 2].map(s => (
           <div key={s} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="h-6 w-48 bg-white/5 rounded-lg animate-pulse" />
-              <div className="h-5 w-24 bg-white/5 rounded-lg animate-pulse" />
-            </div>
+            <div className="h-6 w-48 bg-white/5 rounded-lg animate-pulse" />
             <div className="flex gap-4 overflow-hidden">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-40 space-y-2">
@@ -111,27 +87,19 @@ export default function HomeContent() {
           <p className="text-gray-400 text-lg mb-8 max-w-lg leading-relaxed">
             Nonton ribuan episode donghua sub Indo gratis. Update setiap hari dari anichin.moe.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/search"
-              className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105"
-            >
-              Explore Donghua
-              <HiOutlineChevronRight className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/redeem"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-white/5 border border-white/10 text-white rounded-2xl font-semibold hover:bg-white/10 transition-all duration-300"
-            >
-              Redeem Code
-            </Link>
-          </div>
+          <Link
+            href="/search"
+            className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105"
+          >
+            Explore Donghua
+            <HiOutlineChevronRight className="w-5 h-5" />
+          </Link>
         </div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/8 rounded-full blur-[120px]" />
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-pink-500/8 rounded-full blur-[100px]" />
       </motion.section>
 
-      {/* Populer Hari Ini — horizontal carousel */}
+      {/* Populer Hari Ini — swipe carousel */}
       {popular.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-5">
@@ -141,26 +109,15 @@ export default function HomeContent() {
               </div>
               <h2 className="text-xl font-bold">Populer Hari Ini</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/browse/populer"
-                className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium mr-2"
-              >
-                Lihat Semua
-                <HiOutlineChevronRight className="w-4 h-4" />
-              </Link>
-              <button onClick={() => scrollCarousel('left')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                <HiOutlineChevronLeft className="w-5 h-5" />
-              </button>
-              <button onClick={() => scrollCarousel('right')} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-                <HiOutlineChevronRight className="w-5 h-5" />
-              </button>
-            </div>
+            <Link
+              href="/browse/populer"
+              className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
+            >
+              Lihat Semua
+              <HiOutlineChevronRight className="w-4 h-4" />
+            </Link>
           </div>
-          <div
-            ref={carouselRef}
-            className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
-          >
+          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {popular.map((anime, i) => (
               <motion.div
                 key={anime.slug}
@@ -176,7 +133,7 @@ export default function HomeContent() {
         </section>
       )}
 
-      {/* Ongoing Terupdate — horizontal carousel */}
+      {/* Ongoing Terupdate — grid */}
       {ongoing.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-5">
@@ -186,15 +143,13 @@ export default function HomeContent() {
               </div>
               <h2 className="text-xl font-bold">Ongoing Terupdate</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/browse/ongoing"
-                className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium mr-2"
-              >
-                Lihat Semua
-                <HiOutlineChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
+            <Link
+              href="/browse/ongoing"
+              className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
+            >
+              Lihat Semua
+              <HiOutlineChevronRight className="w-4 h-4" />
+            </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {ongoing.slice(0, 10).map((anime, i) => (
@@ -205,39 +160,6 @@ export default function HomeContent() {
                 transition={{ delay: i * 0.04 }}
               >
                 <AnimeCard anime={anime} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Episode Terbaru — grid */}
-      {recent.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-500/10 rounded-xl">
-                <HiOutlineClock className="w-6 h-6 text-purple-400" />
-              </div>
-              <h2 className="text-xl font-bold">Episode Terbaru</h2>
-            </div>
-            <Link
-              href="/search"
-              className="flex items-center gap-1 text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
-            >
-              Lihat Semua
-              <HiOutlineChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {recent.slice(0, 8).map((episode, i) => (
-              <motion.div
-                key={episode.url}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-              >
-                <EpisodeCard episode={episode} />
               </motion.div>
             ))}
           </div>
