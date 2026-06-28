@@ -38,11 +38,19 @@ export default function Header() {
 
   const fetchNotificationCount = async (uid: string) => {
     try {
+      // Check if user already visited notifications page
+      const readTime = localStorage.getItem('notifications_read');
       const res = await fetch(`${API_BASE}/api/users/notifications?userId=${uid}`);
       const data = await res.json();
       if (data.success && data.data) {
-        const unread = data.data.filter((n: any) => !n.read).length;
-        setNotifications(unread);
+        if (readTime) {
+          // Only show notifications newer than last read time
+          const unread = data.data.filter((n: any) => !n.read && n.createdAt > parseInt(readTime)).length;
+          setNotifications(unread);
+        } else {
+          const unread = data.data.filter((n: any) => !n.read).length;
+          setNotifications(unread);
+        }
       }
     } catch {}
   };

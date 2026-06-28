@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { getRoleConfig, UserRole } from '@/lib/roles';
 
 interface RoleBadgeProps {
@@ -21,9 +21,7 @@ export default function RoleBadge({ role, size = 'md', showLabel = true, classNa
   };
 
   return (
-    <motion.span
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+    <span
       className={`inline-flex items-center gap-1 font-bold rounded-full ${sizeClasses[size]} ${className}`}
       style={{
         background: `linear-gradient(135deg, ${config.color}20, ${config.color}40)`,
@@ -34,7 +32,7 @@ export default function RoleBadge({ role, size = 'md', showLabel = true, classNa
     >
       <span>{config.badge}</span>
       {showLabel && <span>{config.label}</span>}
-    </motion.span>
+    </span>
   );
 }
 
@@ -49,45 +47,10 @@ export function RoleName({ name, role, className = '' }: RoleNameProps) {
 
   return (
     <span className={`relative inline-flex items-center gap-2 ${className}`}>
-      {config.crown && (
-        <span className="text-lg">👑</span>
-      )}
-      {config.diamond && (
-        <span className="text-lg">💎</span>
-      )}
-      <span
-        className="font-bold"
-        style={{
-          color: config.color,
-        }}
-      >
-        {name}
-      </span>
-    </span>
-  );
-}
-
-function RoleParticles({ color }: { color: string }) {
-  return (
-    <span className="absolute inset-0 pointer-events-none overflow-hidden">
-      {[...Array(3)].map((_, i) => (
-        <motion.span
-          key={i}
-          className="absolute w-1 h-1 rounded-full"
-          style={{ background: color }}
-          animate={{
-            x: [0, Math.random() * 40 - 20],
-            y: [0, Math.random() * -30 - 10],
-            opacity: [0.8, 0],
-            scale: [1, 0],
-          }}
-          transition={{
-            duration: 1.5 + Math.random(),
-            repeat: Infinity,
-            delay: i * 0.5,
-          }}
-        />
-      ))}
+      {config.crown && <span className="text-lg">👑</span>}
+      {config.diamond && <span className="text-lg">💎</span>}
+      {config.star && <span className="text-lg">⭐</span>}
+      <span style={{ color: config.color }} className="font-bold">{name}</span>
     </span>
   );
 }
@@ -107,27 +70,100 @@ interface ProfileCardProps {
     watchTime?: number;
     followers?: string[];
   };
+  showBio?: boolean;
   className?: string;
 }
 
-export function ProfileCard({ user, className = '' }: ProfileCardProps) {
+export function ProfileCard({ user, showBio = true, className = '' }: ProfileCardProps) {
   const config = getRoleConfig(user.role || 'member');
   const role = user.role || 'member';
-  const isPremium = role === 'owner' || role === 'vvip' || role === 'vip';
   const isDev = role === 'dev';
   const isOwner = role === 'owner';
+  const isVVIP = role === 'vvip';
+  const isVIP = role === 'vip';
 
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border ${config.border} ${className}`}
       style={{
-        boxShadow: config.glow !== 'none' ? `0 0 20px ${config.color}25` : undefined,
+        boxShadow: config.glow !== 'none' ? config.glow : undefined,
       }}
     >
       {/* Banner background */}
       <div className="absolute inset-0" style={{ background: config.bannerGradient }} />
 
-      {/* Content */}
+      {/* Animated border glow for dev/owner */}
+      {(isDev || isOwner) && (
+        <motion.div
+          className="absolute inset-0 rounded-2xl pointer-events-none"
+          style={{
+            border: `2px solid transparent`,
+            background: `linear-gradient(135deg, ${config.color}60, transparent 30%, transparent 70%, ${config.color}60) border-box`,
+            WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
+            WebkitMaskComposite: 'xor',
+            maskComposite: 'exclude',
+          }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
+
+      {/* Floating particles for dev/owner */}
+      {(isDev || isOwner) && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[...Array(8)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${2 + Math.random() * 3}px`,
+                height: `${2 + Math.random() * 3}px`,
+                background: config.color,
+                left: `${10 + Math.random() * 80}%`,
+                bottom: '0%',
+              }}
+              animate={{
+                y: [0, -120 - Math.random() * 80],
+                x: [0, (Math.random() - 0.5) * 40],
+                opacity: [0.7, 0],
+                scale: [1, 0.3],
+              }}
+              transition={{
+                duration: 2 + Math.random() * 2,
+                repeat: Infinity,
+                delay: i * 0.3,
+                ease: 'easeOut',
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Rotating ring for owner */}
+      {isOwner && (
+        <motion.div
+          className="absolute -inset-[2px] rounded-2xl pointer-events-none"
+          style={{
+            background: `conic-gradient(from 0deg, transparent, ${config.color}50, transparent, ${config.color}50, transparent)`,
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* Diamond shimmer for VVIP */}
+      {isVVIP && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(45deg, transparent 30%, ${config.color}15 50%, transparent 70%)`,
+            backgroundSize: '200% 200%',
+          }}
+          animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
       <div className="relative z-10 p-6">
         <div className="flex items-center gap-4">
           {/* Avatar */}
@@ -137,13 +173,14 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
               alt={user.displayName}
               className="w-20 h-20 rounded-2xl object-cover"
               style={{
-                border: `3px solid ${config.color}60`,
+                border: `3px solid ${config.color}80`,
+                boxShadow: config.glow !== 'none' ? `0 0 15px ${config.color}40` : undefined,
               }}
             />
             {isDev && <span className="absolute -top-2 -right-1 text-xl">⚡</span>}
             {isOwner && <span className="absolute -top-2 -right-1 text-xl">👑</span>}
-            {role === 'vvip' && <span className="absolute -bottom-1 -right-1 text-lg">💎</span>}
-            {role === 'vip' && <span className="absolute -bottom-1 -right-1 text-lg">⭐</span>}
+            {isVVIP && <span className="absolute -bottom-1 -right-1 text-lg">💎</span>}
+            {isVIP && <span className="absolute -bottom-1 -right-1 text-lg">⭐</span>}
           </div>
 
           {/* Info */}
@@ -151,9 +188,7 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
             <RoleName name={user.displayName} role={role} className="text-xl" />
             <div className="flex items-center gap-3 mt-1">
               <RoleBadge role={role} size="sm" />
-              <span className="text-sm text-gray-300">
-                Level {user.level || 1}
-              </span>
+              <span className="text-sm text-gray-300">Level {user.level || 1}</span>
             </div>
             {user.title && (
               <p className="text-sm mt-1 italic" style={{ color: config.color }}>
@@ -162,6 +197,13 @@ export function ProfileCard({ user, className = '' }: ProfileCardProps) {
             )}
           </div>
         </div>
+
+        {/* Bio + Status */}
+        {showBio && user.bio && (
+          <div className="mt-4 pt-4 border-t border-white/10">
+            <p className="text-sm text-gray-200">{user.bio}</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -179,13 +221,12 @@ export function OwnerInfoSection() {
         <span className="text-3xl">👑</span>
         <h3 className="text-xl font-extrabold text-yellow-400">Boss Besar Z.XTREAM</h3>
       </div>
-
       <div className="space-y-3 text-sm">
-        <p className="text-yellow-100 italic text-base leading-relaxed">
-          &quot;Gw cuma orang kismin yang punya jiwa pejuang. Nggak punya apa-apa kecuali mimpi bikin tempat nonton donghua terbaik buat kalian semua.&quot;
+        <p className="text-yellow-100 text-base leading-relaxed">
+          &quot;Mimpi nggak pernah minta izin ke dompet kamu. Mulai dari nol, jatuh bangun, gagal berkali-kali, tapi selalu bangkit lagi. Karena satu-satunya kegagalan yang nyata adalah saat kamu berhenti mencoba.&quot;
         </p>
-        <p className="text-gray-300 text-xs">
-          Mulai dari nol, pelajari coding sendiri, capek, struggle, tapi nggak pernah berhenti. Karena mimpi nggak boleh mati cuma karena kantong tipis. 💪
+        <p className="text-yellow-200/60 text-xs">
+          Jadikan Z.XTREAM bukti bahwa anak kismin juga bisa bikin sesuatu yang besar. Teruslah berjuang, satu baris kode pada satu waktu. 🔥
         </p>
         <div className="flex items-center gap-4 pt-2">
           <span className="text-yellow-400 font-bold">⚡ The One and Only Boss</span>
@@ -209,13 +250,12 @@ export function DevInfoSection() {
         <span className="text-3xl">⚡</span>
         <h3 className="text-xl font-extrabold text-cyan-400">Developer Z.XTREAM</h3>
       </div>
-
       <div className="space-y-3 text-sm">
-        <p className="text-cyan-100 italic text-base leading-relaxed">
-          &quot;The one who built this entire system from scratch. Coding at 3 AM, debugging at 4 AM, crying at 5 AM, deploying at 6 AM.&quot;
+        <p className="text-cyan-100 text-base leading-relaxed">
+          &quot;Setiap error yang kamu fix, setiap bug yang kamu debug, setiap feature yang kamu ship — itu semua langkah kecil menuju sesuatu yang luar biasa. Keep building, keep shipping.&quot;
         </p>
-        <p className="text-gray-300 text-xs">
-          Full-stack developer, part-time overthinker, full-time ngoding. Setiap baris kode di Z.XTREAM adalah bukti bahwa mimpi bisa di-build satu commit pada satu waktu. 🚀
+        <p className="text-cyan-200/60 text-xs">
+          Dari yang nggak ngerti HTML sampai bisa build full-stack streaming platform. Coding is not about talent, it&apos;s about persistence. 🚀
         </p>
         <div className="flex items-center gap-4 pt-2">
           <span className="text-cyan-400 font-bold">⚡ The Creator</span>
@@ -250,35 +290,23 @@ export function DonationSection() {
       <p className="text-sm text-gray-300 mb-4">
         Kalau kalian mau support, boleh donasi seikhlasnya. Nggak wajib, tapi sangat membantu! 🙏
       </p>
-
       {donationSettings.qrUrl && (
         <div className="mb-4">
-          <img
-            src={donationSettings.qrUrl}
-            alt="QR Code Donasi"
-            className="w-48 h-48 mx-auto rounded-xl border border-white/10"
-          />
+          <img src={donationSettings.qrUrl} alt="QR Code Donasi" className="w-48 h-48 mx-auto rounded-xl border border-white/10" />
           <p className="text-center text-xs text-gray-400 mt-2">Scan QR untuk donasi</p>
         </div>
       )}
-
       {donationSettings.danaNumber && (
         <div className="text-center mb-2">
           <span className="text-sm text-gray-300">Dana: </span>
           <span className="text-sm font-mono text-white">{donationSettings.danaNumber}</span>
         </div>
       )}
-
       {donationSettings.telegramLink && (
         <div className="text-center">
-          <a
-            href={donationSettings.telegramLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm text-blue-400 hover:bg-blue-500/30 transition-colors"
-          >
-            <span>💬</span>
-            Join Grup Telegram
+          <a href={donationSettings.telegramLink} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm text-blue-400 hover:bg-blue-500/30 transition-colors">
+            <span>💬</span> Join Grup Telegram
           </a>
         </div>
       )}

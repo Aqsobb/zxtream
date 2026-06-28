@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineBell, HiOutlineCheck, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineCheck } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import { API_BASE } from '@/lib/config';
 
@@ -41,15 +40,21 @@ export default function NotificationsPage() {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-  };
-
-  const clearAll = () => {
+  const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // Also clear badge in localStorage
+    localStorage.setItem('notifications_read', Date.now().toString());
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Auto mark as read when page opens
+  useEffect(() => {
+    if (!loading && notifications.length > 0 && unreadCount > 0) {
+      const timer = setTimeout(() => markAllRead(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, notifications]);
 
   const timeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -77,7 +82,7 @@ export default function NotificationsPage() {
           </div>
           {unreadCount > 0 && (
             <button
-              onClick={clearAll}
+              onClick={markAllRead}
               className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
             >
               <HiOutlineCheck className="w-4 h-4" />
@@ -122,15 +127,6 @@ export default function NotificationsPage() {
                     <p className="text-sm text-gray-400 mt-1">{notif.message}</p>
                     <p className="text-xs text-gray-500 mt-2">{timeAgo(notif.createdAt)}</p>
                   </div>
-                  {!notif.read && (
-                    <button
-                      onClick={() => markAsRead(notif.id)}
-                      className="p-1 text-gray-500 hover:text-white transition-colors"
-                      title="Tandai dibaca"
-                    >
-                      <HiOutlineCheck className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
               </motion.div>
             ))}

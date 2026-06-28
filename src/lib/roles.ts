@@ -12,6 +12,7 @@ export interface RoleConfig {
   particles?: boolean;
   crown?: boolean;
   diamond?: boolean;
+  star?: boolean;
   title?: string;
   bannerGradient?: string;
   profileEffect?: string;
@@ -72,6 +73,7 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     badge: '⭐',
     border: 'border-blue-500/50',
     animation: '',
+    star: true,
     title: 'VIP Member',
     bannerGradient: 'linear-gradient(135deg, #0c1a3a 0%, #1e3a5f 30%, #2563eb 50%, #1e3a5f 70%, #0c1a3a 100%)',
     profileEffect: 'star-glow',
