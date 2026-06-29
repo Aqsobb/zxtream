@@ -28,7 +28,8 @@ export default function HistoryPage() {
   }, []);
 
   const fetchHistory = async () => {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    let user;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
     if (!user) {
       setLoading(false);
       return;

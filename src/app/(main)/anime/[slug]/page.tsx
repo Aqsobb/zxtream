@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlinePlay, HiOutlineBookmark, HiOutlineShare, HiOutlineClock, HiOutlineStar } from 'react-icons/hi';
+import { HiOutlinePlay, HiOutlineShare, HiOutlineClock, HiOutlineStar } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import Comments from '@/components/anime/Comments';
 import { API_BASE } from '@/lib/config';
@@ -45,8 +45,15 @@ export default function AnimeDetailPage() {
     try {
       const res = await fetch(`${API_BASE}/api/anime/detail/${slug}`);
       const data = await res.json();
-      if (data.success) {
-        setAnime(data.data);
+      if (data.success && data.data) {
+        setAnime({
+          ...data.data,
+          genres: data.data.genres || [],
+          episodes: data.data.episodes || [],
+          info: data.data.info || {},
+          synopsis: data.data.synopsis || '',
+          releaseYear: data.data.releaseYear || 0,
+        });
       }
     } catch (error) {
       console.error('Failed to fetch anime detail:', error);
@@ -74,8 +81,12 @@ export default function AnimeDetailPage() {
   if (!anime) {
     return (
       <MainLayout>
-        <div className="p-4 lg:p-6 text-center">
-          <h1 className="text-2xl font-bold">Anime not found</h1>
+        <div className="p-4 lg:p-6 text-center py-20">
+          <h1 className="text-2xl font-bold mb-2">Anime tidak ditemukan</h1>
+          <p className="text-gray-400">Coba cari anime lain di search</p>
+          <Link href="/search" className="inline-block mt-4 px-6 py-2 bg-purple-600 rounded-xl text-white font-medium hover:bg-purple-500 transition-colors">
+            Search Anime
+          </Link>
         </div>
       </MainLayout>
     );
@@ -144,22 +155,26 @@ export default function AnimeDetailPage() {
               </div>
 
               {/* Genres */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                {anime.genres.map((genre) => (
-                  <Link
-                    key={genre}
-                    href={`/genre/${encodeURIComponent(genre)}`}
-                    className="px-3 py-1.5 bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 text-sm rounded-lg transition-colors border border-white/5 hover:border-purple-500/30"
-                  >
-                    {genre}
-                  </Link>
-                ))}
-              </div>
+              {anime.genres.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {anime.genres.map((genre) => (
+                    <Link
+                      key={genre}
+                      href={`/genre/${encodeURIComponent(genre)}`}
+                      className="px-3 py-1.5 bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 text-sm rounded-lg transition-colors border border-white/5 hover:border-purple-500/30"
+                    >
+                      {genre}
+                    </Link>
+                  ))}
+                </div>
+              )}
 
               {/* Synopsis */}
-              <p className="text-gray-300 mb-6 leading-relaxed line-clamp-4 lg:line-clamp-none">
-                {anime.synopsis}
-              </p>
+              {anime.synopsis && (
+                <p className="text-gray-300 mb-6 leading-relaxed line-clamp-4 lg:line-clamp-none">
+                  {anime.synopsis}
+                </p>
+              )}
 
               {/* Actions */}
               <div className="flex flex-wrap gap-3">

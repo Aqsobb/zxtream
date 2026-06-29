@@ -50,11 +50,10 @@ export default function Sidebar() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Check auth state
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      setUser(JSON.parse(stored));
-    }
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) setUser(JSON.parse(stored));
+    } catch {}
   }, []);
 
   return (

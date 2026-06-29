@@ -16,7 +16,8 @@ export default function RedeemPage() {
     setLoading(true);
     setResult(null);
 
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    let user;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
     if (!user) {
       setResult({ success: false, message: 'Login first!' });
       setLoading(false);

@@ -44,8 +44,10 @@ export default function WatchPage() {
   const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (user?.role) setUserRole(user.role);
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
+      if (user?.role) setUserRole(user.role);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -100,7 +102,8 @@ export default function WatchPage() {
   };
 
   const toggleBookmark = async () => {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    let user;
+    try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
     if (!user) { router.push('/login'); return; }
     try {
       await fetch(`${API_BASE}/api/users/bookmark`, {

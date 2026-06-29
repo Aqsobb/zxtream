@@ -28,12 +28,14 @@ export default function Header() {
   const debounceRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      const userData = JSON.parse(stored);
-      setUser(userData);
-      fetchNotificationCount(userData.uid);
-    }
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const userData = JSON.parse(stored);
+        setUser(userData);
+        fetchNotificationCount(userData.uid);
+      }
+    } catch {}
   }, []);
 
   const fetchNotificationCount = async (uid: string) => {

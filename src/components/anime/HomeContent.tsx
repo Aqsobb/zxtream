@@ -27,8 +27,10 @@ export default function HomeContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) setUser(JSON.parse(stored));
+    } catch {}
 
     Promise.all([
       fetch(`${API_BASE}/api/anime/home`).then(r => r.json()),
