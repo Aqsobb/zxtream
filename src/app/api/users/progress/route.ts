@@ -43,20 +43,44 @@ export async function GET(req: NextRequest) {
     }
 
     if (episodeId) {
-      // Get progress for specific episode
       const url = API_KEY
         ? `${DB_URL}/users/${userId}/history/${episodeId}.json?auth=${API_KEY}`
         : `${DB_URL}/users/${userId}/history/${episodeId}.json`;
       const { data } = await axios.get(url);
       return NextResponse.json({ success: true, data });
     } else {
-      // Get all history
       const url = API_KEY
         ? `${DB_URL}/users/${userId}/history.json?auth=${API_KEY}`
         : `${DB_URL}/users/${userId}/history.json`;
       const { data } = await axios.get(url);
       return NextResponse.json({ success: true, data: data || {} });
     }
+  } catch (e: any) {
+    return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const userId = req.nextUrl.searchParams.get('userId');
+    const episodeId = req.nextUrl.searchParams.get('episodeId');
+    if (!userId) {
+      return NextResponse.json({ success: false, error: 'Missing userId' }, { status: 400 });
+    }
+
+    if (episodeId) {
+      const url = API_KEY
+        ? `${DB_URL}/users/${userId}/history/${episodeId}.json?auth=${API_KEY}`
+        : `${DB_URL}/users/${userId}/history/${episodeId}.json`;
+      await axios.delete(url);
+    } else {
+      const url = API_KEY
+        ? `${DB_URL}/users/${userId}/history.json?auth=${API_KEY}`
+        : `${DB_URL}/users/${userId}/history.json`;
+      await axios.delete(url);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

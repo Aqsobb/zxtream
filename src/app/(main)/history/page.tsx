@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlineClock, HiOutlinePlay } from 'react-icons/hi';
+import { HiOutlineClock, HiOutlinePlay, HiOutlineTrash } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
 import { API_BASE } from '@/lib/config';
 
@@ -22,6 +22,7 @@ interface HistoryItem {
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     fetchHistory();
@@ -34,6 +35,7 @@ export default function HistoryPage() {
       setLoading(false);
       return;
     }
+    setUserId(user.uid);
 
     try {
       const res = await fetch(`${API_BASE}/api/users/progress?userId=${user.uid}`);
@@ -47,6 +49,23 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteAllHistory = async () => {
+    if (!userId) return;
+    if (!confirm('Hapus semua riwayat tontonan?')) return;
+    try {
+      await fetch(`${API_BASE}/api/users/progress?userId=${userId}`, { method: 'DELETE' });
+      setHistory([]);
+    } catch {}
+  };
+
+  const deleteSingleHistory = async (episodeId: string) => {
+    if (!userId) return;
+    try {
+      await fetch(`${API_BASE}/api/users/progress?userId=${userId}&episodeId=${episodeId}`, { method: 'DELETE' });
+      setHistory(prev => prev.filter(h => h.episodeId !== episodeId));
+    } catch {}
   };
 
   const formatDate = (timestamp: number) => {
@@ -64,7 +83,18 @@ export default function HistoryPage() {
   return (
     <MainLayout>
       <div className="p-4 lg:p-6">
-        <h1 className="text-2xl font-bold mb-6">Riwayat Tontonan</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Riwayat Tontonan</h1>
+          {history.length > 0 && (
+            <button
+              onClick={deleteAllHistory}
+              className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 rounded-xl text-sm font-medium hover:bg-red-500/20 transition-colors border border-red-500/20"
+            >
+              <HiOutlineTrash className="w-4 h-4" />
+              Hapus Semua
+            </button>
+          )}
+        </div>
 
         {loading ? (
           <div className="space-y-3">
@@ -89,34 +119,21 @@ export default function HistoryPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
+                className="flex items-center gap-4 p-4 bg-dark-800/50 rounded-xl hover:bg-dark-700/50 transition-all duration-200 group"
               >
-                <Link
-                  href={`/watch/${item.episodeId}`}
-                  className="flex items-center gap-4 p-4 bg-dark-800/50 rounded-xl hover:bg-dark-700/50 transition-all duration-200"
-                >
+                <Link href={`/watch/${item.episodeId}`} className="flex items-center gap-4 flex-1 min-w-0">
                   {/* Thumbnail */}
                   <div className="relative w-24 h-16 flex-shrink-0 rounded-lg overflow-hidden bg-white/5">
                     {item.thumbnail ? (
-                      <img
-                        src={item.thumbnail}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <HiOutlinePlay className="w-6 h-6 text-dark-400" />
                       </div>
                     )}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity">
-                      <HiOutlinePlay className="w-6 h-6 text-white" />
-                    </div>
-                    {/* Progress bar */}
                     {item.duration > 0 && (
                       <div className="absolute bottom-0 left-0 right-0 h-1 bg-dark-700">
-                        <div
-                          className="h-full bg-primary-500"
-                          style={{ width: `${Math.min((item.progress / item.duration) * 100, 100)}%` }}
-                        />
+                        <div className="h-full bg-primary-500" style={{ width: `${Math.min((item.progress / item.duration) * 100, 100)}%` }} />
                       </div>
                     )}
                   </div>
@@ -124,12 +141,19 @@ export default function HistoryPage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate text-white">{item.title || item.episodeId}</h3>
-                    <p className="text-sm text-dark-400">
-                      Episode {item.episodeNumber || '?'}
-                    </p>
+                    <p className="text-sm text-dark-400">Episode {item.episodeNumber || '?'}</p>
                     <p className="text-xs text-dark-500">{formatDate(item.timestamp)}</p>
                   </div>
                 </Link>
+
+                {/* Delete button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteSingleHistory(item.episodeId); }}
+                  className="p-2 rounded-lg text-dark-500 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                  title="Hapus"
+                >
+                  <HiOutlineTrash className="w-4 h-4" />
+                </button>
               </motion.div>
             ))}
           </div>
