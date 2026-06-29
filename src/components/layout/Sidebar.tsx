@@ -27,6 +27,7 @@ import {
 } from 'react-icons/hi';
 import { FaFire, FaCrown, FaUserShield } from 'react-icons/fa';
 import RoleBadge from '@/components/ui/RoleBadge';
+import { API_BASE } from '@/lib/config';
 
 const navItems = [
   { href: '/home', label: 'Home', icon: HiHome },
@@ -43,17 +44,34 @@ const browseItems = [
   { href: '/browse/completed', label: 'Completed', icon: HiOutlineCheckCircle },
 ];
 
+const genreLinks = [
+  { label: 'Action', href: '/search?q=action' },
+  { label: 'Fantasy', href: '/search?q=fantasy' },
+  { label: 'Adventure', href: '/search?q=adventure' },
+  { label: 'Martial Arts', href: '/search?q=martial+arts' },
+  { label: 'Comedy', href: '/search?q=comedy' },
+  { label: 'Drama', href: '/search?q=drama' },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [popularList, setPopularList] = useState<any[]>([]);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('user');
       if (stored) setUser(JSON.parse(stored));
     } catch {}
+
+    fetch(`${API_BASE}/api/anime/home`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) setPopularList((d.data.popular || []).slice(0, 10));
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -81,11 +99,11 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-64 bg-dark-900/95 backdrop-blur-xl border-r border-dark-700/50 z-50 transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed left-0 top-0 h-full w-64 bg-dark-900/95 backdrop-blur-xl border-r border-dark-700/50 z-50 transition-transform duration-300 lg:translate-x-0 overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col min-h-full">
           {/* Logo */}
           <Link href="/home" className="flex items-center gap-3 px-6 py-5 border-b border-dark-700/50">
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-pink rounded-xl flex items-center justify-center">
@@ -146,6 +164,52 @@ export default function Sidebar() {
                 );
               })}
             </div>
+
+            {/* Genre quick links */}
+            <div className="pt-3 mt-3 border-t border-dark-700/50">
+              <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Genre</p>
+              <div className="flex flex-wrap gap-1.5 px-4 pt-2">
+                {genreLinks.map((g) => (
+                  <Link
+                    key={g.label}
+                    href={g.href}
+                    onClick={() => setIsOpen(false)}
+                    className="px-2.5 py-1 text-xs bg-dark-800 text-dark-300 rounded-lg hover:bg-dark-700 hover:text-white transition-colors"
+                  >
+                    {g.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Popular Ranking Widget */}
+            {popularList.length > 0 && (
+              <div className="pt-3 mt-3 border-t border-dark-700/50">
+                <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Populer</p>
+                <div className="space-y-1 px-3 pt-2">
+                  {popularList.map((anime: any, idx: number) => (
+                    <Link
+                      key={anime.slug}
+                      href={`/anime/${anime.slug}`}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-dark-800 transition-all group"
+                    >
+                      <span className={`w-5 h-5 flex items-center justify-center rounded-md text-xs font-bold flex-shrink-0 ${
+                        idx < 3 ? 'bg-gradient-to-br from-orange-500 to-red-500 text-white' : 'bg-dark-700 text-dark-400'
+                      }`}>
+                        {idx + 1}
+                      </span>
+                      <div className="w-8 h-11 rounded-md overflow-hidden bg-white/5 flex-shrink-0">
+                        <img src={anime.thumbnail} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                      <p className="text-xs font-medium text-dark-200 line-clamp-2 group-hover:text-white transition-colors">
+                        {anime.title}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </nav>
 
           {/* User section */}

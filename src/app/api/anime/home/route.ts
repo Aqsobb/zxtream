@@ -7,16 +7,18 @@ export const maxDuration = 30;
 export async function GET() {
   try {
     const homeData = await scraper.getHomeAnime();
-    // Fetch ongoing separately — don't fail home if ongoing is slow
     let ongoing: any[] = [];
     try {
       ongoing = await scraper.getOngoingAnime(1);
     } catch {}
+
     return NextResponse.json({
       success: true,
       data: {
-        popular: homeData.popular,
+        popular: homeData.popular || [],
         ongoing,
+        schedule: homeData.schedule || [],
+        hero: homeData.hero || [],
       },
     });
   } catch (e: any) {

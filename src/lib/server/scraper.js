@@ -89,21 +89,51 @@ async function scrapeListPage(url) {
   return results;
 }
 
+function parseSchedule($) {
+  const schedule = [];
+  const dayMap = {
+    'Senin': 'Senin', 'Selasa': 'Selasa', 'Rabu': 'Rabu', 'Kamis': 'Kamis',
+    "Jum'at": "Jum'at", 'Jumat': "Jum'at", 'Sabtu': 'Sabtu', 'Minggu': 'Minggu',
+    'Acak': 'Acak', 'Random': 'Acak',
+  };
+
+  $('.listSchh').each((_, el) => {
+    const $el = $(el);
+    const dayName = $el.find('h2').first().text().trim();
+    const mappedDay = dayMap[dayName] || dayName;
+    const items = [];
+    $el.find('.subSchh a').each((_, a) => {
+      const title = $(a).text().trim();
+      const slug = ($(a).attr('href') || '').replace(/^\//, '').replace(/\/$/, '');
+      if (title && slug) items.push({ title, slug });
+    });
+    if (items.length > 0) schedule.push({ name: mappedDay, items });
+  });
+
+  return schedule;
+}
+
 async function getHomeAnime() {
-  // Always scrape live from anichin (no cache for freshness)
   const $ = await fetchPage(BASE_URL);
   if (!$) {
-    // Fallback to cache if live fails
     const cached = await getCachedData('anime/home');
     if (cached?.data?.popular?.length > 0) return cached.data;
-    return { popular: [], ongoing: [] };
+    return { popular: [], ongoing: [], schedule: [], hero: [] };
   }
 
   const popular = dedupe($('.popularslider .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
   const ongoing = dedupe($('.ongoing .bs, .section-ongoing .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
+  const schedule = parseSchedule($);
 
-  const result = { popular, ongoing };
-  // Cache for 5 minutes only
+  // Hero slides: top 5 popular with their thumbnails
+  const hero = popular.slice(0, 5).map(item => ({
+    title: item.title,
+    slug: item.slug,
+    thumbnail: item.thumbnail,
+    synopsis: '',
+  }));
+
+  const result = { popular, ongoing, schedule, hero };
   if (result.popular.length > 0) {
     await setCachedData('anime/home', result, 5 * 60 * 1000);
   }
