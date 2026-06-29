@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { HiOutlinePlay, HiOutlineShare, HiOutlineClock, HiOutlineStar } from 'react-icons/hi';
+import { HiOutlinePlay, HiOutlineShare, HiOutlineClock, HiOutlineStar, HiOutlineBookmark } from 'react-icons/hi';
+import { FaStar } from 'react-icons/fa';
 import MainLayout from '@/components/layout/MainLayout';
 import Comments from '@/components/anime/Comments';
 import { API_BASE } from '@/lib/config';
@@ -36,9 +37,22 @@ export default function AnimeDetailPage() {
   const slug = params.slug as string;
   const [anime, setAnime] = useState<AnimeDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rating, setRating] = useState({ average: 0, count: 0 });
+  const [userRating, setUserRating] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        setUserId(u.uid);
+        checkBookmark(u.uid);
+      }
+    } catch {}
     fetchAnimeDetail();
+    fetchRating();
   }, [slug]);
 
   const fetchAnimeDetail = async () => {
@@ -60,6 +74,57 @@ export default function AnimeDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchRating = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/users/rating?targetId=${encodeURIComponent(slug)}`);
+      const data = await res.json();
+      if (data.success) {
+        setRating({ average: data.average, count: data.count });
+      }
+    } catch {}
+  };
+
+  const checkBookmark = async (uid: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/users/profile/${uid}`);
+      const data = await res.json();
+      if (data.success && data.data?.bookmarks) {
+        setIsBookmarked(data.data.bookmarks.includes(slug));
+      }
+    } catch {}
+  };
+
+  const handleRate = async (score: number) => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/users/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId: slug, userId, score }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUserRating(score);
+        setRating({ average: data.average, count: data.count });
+      }
+    } catch {}
+  };
+
+  const handleBookmark = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/users/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, animeSlug: slug }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsBookmarked(data.data.isBookmarked);
+      }
+    } catch {}
   };
 
   const handleShare = () => {
@@ -128,6 +193,25 @@ export default function AnimeDetailPage() {
             >
               <h1 className="text-2xl lg:text-4xl font-extrabold mb-4">{anime.title}</h1>
 
+              {/* Rating display */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const filled = star <= Math.round(rating.average / 2);
+                      return (
+                        <FaStar
+                          key={star}
+                          className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-dark-600'}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="text-lg font-bold text-yellow-400">{rating.average}</span>
+                  <span className="text-sm text-dark-400">({rating.count} rating)</span>
+                </div>
+              </div>
+
               {/* Meta info */}
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 {anime.type && (
@@ -160,7 +244,7 @@ export default function AnimeDetailPage() {
                   {anime.genres.map((genre) => (
                     <Link
                       key={genre}
-                      href={`/genre/${encodeURIComponent(genre)}`}
+                      href={`/search?genre=${encodeURIComponent(genre)}`}
                       className="px-3 py-1.5 bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 text-sm rounded-lg transition-colors border border-white/5 hover:border-purple-500/30"
                     >
                       {genre}
@@ -187,6 +271,19 @@ export default function AnimeDetailPage() {
                     Watch Now
                   </Link>
                 )}
+                {userId && (
+                  <button
+                    onClick={handleBookmark}
+                    className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-medium transition-all duration-200 border ${
+                      isBookmarked
+                        ? 'bg-pink-500/20 text-pink-400 border-pink-500/30'
+                        : 'bg-white/5 text-white border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    <HiOutlineBookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
+                    {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+                  </button>
+                )}
                 <button
                   onClick={handleShare}
                   className="flex items-center gap-2 px-6 py-3.5 bg-white/5 text-white rounded-2xl font-medium hover:bg-white/10 transition-all duration-200 border border-white/10"
@@ -195,6 +292,28 @@ export default function AnimeDetailPage() {
                   Share
                 </button>
               </div>
+
+              {/* User Rating */}
+              {userId && (
+                <div className="mt-6 p-4 bg-dark-800/50 rounded-xl border border-white/5">
+                  <p className="text-sm font-medium text-gray-300 mb-2">Rating kamu:</p>
+                  <div className="flex items-center gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                      <button
+                        key={score}
+                        onClick={() => handleRate(score)}
+                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                          score <= userRating
+                            ? 'bg-yellow-500 text-white'
+                            : 'bg-dark-700 text-gray-400 hover:bg-dark-600'
+                        }`}
+                      >
+                        {score}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </div>
 

@@ -42,6 +42,7 @@ const browseItems = [
   { href: '/browse/populer', label: 'Populer', icon: HiOutlineFire },
   { href: '/browse/ongoing', label: 'Ongoing', icon: HiOutlinePlay },
   { href: '/browse/completed', label: 'Completed', icon: HiOutlineCheckCircle },
+  { href: '/az-list', label: 'A-Z List', icon: HiOutlineGlobe },
 ];
 
 const genreLinks = [
