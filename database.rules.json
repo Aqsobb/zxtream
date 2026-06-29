@@ -1,12 +1,20 @@
 {
   "rules": {
     "users": {
-      ".read": true,
-      ".write": true
+      "$uid": {
+        ".read": true,
+        ".write": true
+      }
     },
     "comments": {
       ".read": true,
-      ".write": true
+      "$type": {
+        "$targetId": {
+          "$commentId": {
+            ".write": true
+          }
+        }
+      }
     },
     "codes": {
       ".read": true,
@@ -17,8 +25,10 @@
       ".write": true
     },
     "notifications": {
-      ".read": true,
-      ".write": true
+      "$nid": {
+        ".read": true,
+        ".write": true
+      }
     }
   }
 }

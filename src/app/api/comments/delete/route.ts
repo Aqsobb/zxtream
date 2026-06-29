@@ -24,14 +24,14 @@ function authUrl(path: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { commentId, animeSlug, requesterUid } = await req.json();
-    if (!commentId || !animeSlug || !requesterUid) {
+    const { commentId, type, targetId, requesterUid } = await req.json();
+    if (!commentId || !type || !targetId || !requesterUid) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
     if (!(await isOwner(requesterUid))) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
-    await axios.delete(authUrl(`comments/${animeSlug}/${commentId}`));
+    await axios.delete(authUrl(`comments/${type}/${targetId}/${commentId}`));
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

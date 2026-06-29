@@ -66,7 +66,7 @@ async function toggleBookmark(uid, animeSlug) {
       bookmarks.push(animeSlug);
     }
     await updateUser(uid, { bookmarks });
-    return !bookmarks.includes(animeSlug);
+    return bookmarks.includes(animeSlug);
   } catch (e) {
     console.error('toggleBookmark error:', e.message);
     return false;

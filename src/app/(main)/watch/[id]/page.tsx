@@ -106,7 +106,7 @@ export default function WatchPage() {
       await fetch(`${API_BASE}/api/users/bookmark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.uid, slug: animeSlug }),
+        body: JSON.stringify({ userId: user.uid, animeSlug }),
       });
       setIsBookmarked(!isBookmarked);
     } catch {}

@@ -33,6 +33,17 @@ export default function BrowsePage({ title, icon, apiEndpoint, accentColor }: Br
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
 
+  const accentColorMap: Record<string, string> = {
+    purple: 'rgba(168,85,247,0.1)',
+    pink: 'rgba(236,72,153,0.1)',
+    cyan: 'rgba(6,182,212,0.1)',
+    orange: 'rgba(249,115,22,0.1)',
+    green: 'rgba(34,197,94,0.1)',
+    red: 'rgba(239,68,68,0.1)',
+    yellow: 'rgba(234,179,8,0.1)',
+    blue: 'rgba(59,130,246,0.1)',
+  };
+
   useEffect(() => {
     setLoading(true);
     fetch(`${API_BASE}${apiEndpoint}${apiEndpoint.includes('?') ? '&' : '?'}page=${currentPage}`)
@@ -55,7 +66,7 @@ export default function BrowsePage({ title, icon, apiEndpoint, accentColor }: Br
     <MainLayout>
       <div className="p-4 lg:p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className={`p-2 bg-${accentColor}-500/10 rounded-xl`}>
+          <div className="p-2 rounded-xl" style={{ backgroundColor: accentColorMap[accentColor] || accentColorMap.purple }}>
             {icon}
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>

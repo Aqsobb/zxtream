@@ -75,10 +75,10 @@ export async function POST(req: NextRequest) {
     if (!type || !targetId || !uid || !text) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
-    const timestamp = Date.now();
+    const commentId = `c_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
     const comment = { uid, displayName, photoURL: photoURL || '', role: role || 'member', text, likes: [], timestamp };
-    await axios.put(authUrl(`comments/${type}/${targetId}/${timestamp}`), comment);
-    return NextResponse.json({ success: true, data: { id: String(timestamp), ...comment } });
+    await axios.put(authUrl(`comments/${type}/${targetId}/${commentId}`), comment);
+    return NextResponse.json({ success: true, data: { id: commentId, ...comment } });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });
   }

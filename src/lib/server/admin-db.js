@@ -79,10 +79,12 @@ async function redeemCode(code, uid, displayName) {
       roleUpdate = { totalExp: (currentUser?.totalExp || 0) + expAmount };
       message = `+${expAmount} EXP added!`;
       break;
-    case 'coins':
-      roleUpdate = { coins: codeData.value || 1000 };
+    case 'coins': {
+      const coinsUser = await getSimpleUser(uid);
+      roleUpdate = { coins: (coinsUser?.coins || 0) + (codeData.value || 1000) };
       message = `+${codeData.value || 1000} Coins added!`;
       break;
+    }
     default:
       return { success: false, error: 'Unknown code type' };
   }
