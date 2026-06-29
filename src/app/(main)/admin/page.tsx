@@ -45,7 +45,7 @@ interface Comment {
   createdAt: number;
 }
 
-type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast' | 'donations';
+type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast' | 'donations' | 'notifications';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);

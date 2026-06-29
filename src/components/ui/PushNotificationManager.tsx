@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { HiOutlineBell, HiOutlineBellOff } from 'react-icons/hi';
+import { HiOutlineBell } from 'react-icons/hi';
 import { API_BASE } from '@/lib/config';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
@@ -124,7 +124,7 @@ export default function PushNotificationManager() {
           {isSubscribed ? (
             <HiOutlineBell className="w-6 h-6 text-green-400" />
           ) : (
-            <HiOutlineBellOff className="w-6 h-6 text-gray-500" />
+            <HiOutlineBell className="w-6 h-6 text-gray-500" />
           )}
           <div>
             <h3 className="font-bold">Episode Update Notifikasi</h3>

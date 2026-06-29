@@ -16,6 +16,7 @@ interface LeaderboardEntry {
   photoURL: string;
   level: number;
   exp: number;
+  totalExp: number;
   title: string;
   role: string;
   badges: string[];
