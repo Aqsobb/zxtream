@@ -1,12 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import * as scraper from '@/lib/server/scraper';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const homeData = await scraper.getHomeAnime();
+    const forceRefresh = req.nextUrl.searchParams.get('refresh') === '1';
+    const homeData = await scraper.getHomeAnime(forceRefresh);
     let ongoing: any[] = [];
     try {
       ongoing = await scraper.getOngoingAnime(1);

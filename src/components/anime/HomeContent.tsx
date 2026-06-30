@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   HiOutlineFire, HiOutlineChevronRight, HiOutlinePlay,
   HiOutlineCollection, HiOutlineSparkles, HiOutlineStar, HiOutlineClock,
-  HiOutlineBookOpen, HiOutlineQuestionMarkCircle,
+  HiOutlineBookOpen, HiOutlineQuestionMarkCircle, HiOutlineRefresh,
 } from 'react-icons/hi';
 import AnimeCard from './AnimeCard';
 import HeroSlider from './HeroSlider';
@@ -45,37 +45,51 @@ export default function HomeContent() {
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async (refresh = false) => {
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const suffix = refresh ? '?refresh=1' : '';
+      const [homeRes, completedRes, upcomingRes] = await Promise.all([
+        fetch(`${API_BASE}/api/anime/home${suffix}`),
+        fetch(`${API_BASE}/api/anime/completed?page=1`),
+        fetch(`${API_BASE}/api/anime/upcoming`).catch(() => new Response('{}')),
+      ]);
+      const [homeData, completedData, upcomingData] = await Promise.all([
+        homeRes.json(), completedRes.json(), upcomingRes.json().catch(() => ({ success: false, data: [] })),
+      ]);
+      if (homeData.success) {
+        setPopular(homeData.data.popular || []);
+        setOngoing(homeData.data.ongoing || []);
+        setSchedule(homeData.data.schedule || []);
+        if (homeData.data.hero?.length > 0) {
+          setHeroSlides(homeData.data.hero);
+        } else if (homeData.data.popular?.length > 0) {
+          setHeroSlides(homeData.data.popular.slice(0, 5).map((a: any) => ({
+            title: a.title, slug: a.slug, thumbnail: a.thumbnail, synopsis: '',
+          })));
+        }
+      } else {
+        if (!refresh) setError(true);
+      }
+      if (completedData.success) {
+        setCompleted(completedData.data?.items || completedData.data || []);
+      }
+      if (upcomingData.success) {
+        setUpcoming(upcomingData.data || []);
+      }
+    } catch {
+      if (!refresh) setError(true);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_BASE}/api/anime/home`).then(r => r.json()),
-      fetch(`${API_BASE}/api/anime/completed?page=1`).then(r => r.json()),
-      fetch(`${API_BASE}/api/anime/upcoming`).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-    ])
-      .then(([homeData, completedData, upcomingData]) => {
-        if (homeData.success) {
-          setPopular(homeData.data.popular || []);
-          setOngoing(homeData.data.ongoing || []);
-          setSchedule(homeData.data.schedule || []);
-          if (homeData.data.hero?.length > 0) {
-            setHeroSlides(homeData.data.hero);
-          } else if (homeData.data.popular?.length > 0) {
-            setHeroSlides(homeData.data.popular.slice(0, 5).map((a: any) => ({
-              title: a.title, slug: a.slug, thumbnail: a.thumbnail, synopsis: '',
-            })));
-          }
-        } else {
-          setError(true);
-        }
-        if (completedData.success) {
-          setCompleted(completedData.data?.items || completedData.data || []);
-        }
-        if (upcomingData.success) {
-          setUpcoming(upcomingData.data || []);
-        }
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    fetchData();
   }, []);
 
   if (loading) {
@@ -121,6 +135,18 @@ export default function HomeContent() {
 
   return (
     <div className="p-4 lg:p-6 space-y-8">
+      <div className="flex items-center justify-between mb-2">
+        <div />
+        <button
+          onClick={() => fetchData(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+        >
+          <HiOutlineRefresh className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Memperbarui...' : 'Scrape Real-Time'}
+        </button>
+      </div>
+
       <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <HeroSlider slides={heroSlides} />
       </motion.section>

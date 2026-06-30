@@ -113,31 +113,30 @@ function parseSchedule($) {
   return schedule;
 }
 
-async function getHomeAnime() {
+async function getHomeAnime(forceRefresh = false) {
+  // Try fresh scrape first
   const $ = await fetchPage(BASE_URL);
-  if (!$) {
-    const cached = await getCachedData('anime/home');
-    if (cached?.data?.popular?.length > 0) return cached.data;
-    return { popular: [], ongoing: [], schedule: [], hero: [] };
+  if ($) {
+    const popular = dedupe($('.popularslider .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
+    const ongoing = dedupe($('.ongoing .bs, .section-ongoing .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
+    const schedule = parseSchedule($);
+    const hero = popular.slice(0, 5).map(item => ({
+      title: item.title,
+      slug: item.slug,
+      thumbnail: item.thumbnail,
+      synopsis: '',
+    }));
+    const result = { popular, ongoing, schedule, hero };
+    if (result.popular.length > 0) {
+      await setCachedData('anime/home', result, 5 * 60 * 1000).catch(() => {});
+    }
+    return result;
   }
 
-  const popular = dedupe($('.popularslider .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
-  const ongoing = dedupe($('.ongoing .bs, .section-ongoing .bs').toArray().map(el => extractItem($, el)).filter(i => i.title && i.slug));
-  const schedule = parseSchedule($);
-
-  // Hero slides: top 5 popular with their thumbnails
-  const hero = popular.slice(0, 5).map(item => ({
-    title: item.title,
-    slug: item.slug,
-    thumbnail: item.thumbnail,
-    synopsis: '',
-  }));
-
-  const result = { popular, ongoing, schedule, hero };
-  if (result.popular.length > 0) {
-    await setCachedData('anime/home', result, 5 * 60 * 1000);
-  }
-  return result;
+  // Fallback to cache if scrape fails
+  const cached = await getCachedData('anime/home');
+  if (cached?.data?.popular?.length > 0) return cached.data;
+  return { popular: [], ongoing: [], schedule: [], hero: [] };
 }
 
 async function getOngoingAnime(page = 1) {
@@ -237,12 +236,23 @@ async function getAnimeByGenre(genre, page = 1) {
   return dedupe(results);
 }
 
-async function getAnimeDetail(slug) {
-  const cached = await getCachedData(`anime/detail/${slug}`);
-  if (cached?.data?.title) return cached.data;
+async function getAnimeDetail(slug, forceRefresh = false) {
+  if (!forceRefresh) {
+    const cached = await getCachedData(`anime/detail/${slug}`);
+    if (cached?.data?.title) {
+      // Return cached but refresh in background if stale (> 5 min old)
+      const age = Date.now() - (cached.cachedAt || 0);
+      if (age < 5 * 60 * 1000) return cached.data;
+    }
+  }
 
   let $ = await fetchPage(`${BASE_URL}/${slug}/`);
-  if (!$) return null;
+  if (!$) {
+    // Fallback to expired cache if scrape fails
+    const cached = await getCachedData(`anime/detail/${slug}`);
+    if (cached?.data?.title) return cached.data;
+    return null;
+  }
 
   const title = $('h1.entry-title, h1').first().text().trim();
   const pageHtml = $.html();
@@ -300,7 +310,7 @@ async function getAnimeDetail(slug) {
   };
 
   if (result.title) {
-    await setCachedData(`anime/detail/${slug}`, result, 60 * 60 * 1000);
+    await setCachedData(`anime/detail/${slug}`, result, 10 * 60 * 1000);
   }
   return result;
 }
@@ -315,7 +325,23 @@ function extractIframeSrc(base64Html) {
   return m ? m[1] : '';
 }
 
-const PREMIUM_SERVERS = ['4k', '4kui', 'wafilm', 'wibufiles', 'sextimax', 'hls', 'vidhide', 'filelions', 'streamtape'];
+const PREMIUM_SERVERS = ['4k', '4kui', 'wafilm', 'wibufiles', 'sextimax', 'hls', 'vidhide', 'filelions', 'streamtape', 'uqload'];
+
+// Strip ad-related query params from embed URLs
+function cleanEmbedUrl(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    const adParams = ['ads', 'ad', 'popup', 'popunder', 'target', 'click', 'subid', 'sub_id'];
+    adParams.forEach(p => u.searchParams.delete(p));
+    // Remove any redirect/click-through wrappers
+    u.searchParams.delete('redirect');
+    u.searchParams.delete('next');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
 
 function isPremiumServer(name) {
   const lower = name.toLowerCase();
@@ -372,7 +398,7 @@ async function getEpisodeServers(episodeUrl) {
     const iframeUrl = extractIframeSrc(value);
     servers.push({
       name,
-      url: iframeUrl,
+      url: cleanEmbedUrl(iframeUrl),
       embed: extractIframeHtml(value),
       premium: isPremiumServer(name),
     });
@@ -385,10 +411,9 @@ async function getEpisodeStream(episodeUrl) {
   if (!$) return null;
   const servers = await getEpisodeServers(episodeUrl);
 
-  // Try to resolve direct URLs for each server (in parallel, first 3)
-  const toResolve = servers.slice(0, 3);
+  // Try to resolve direct URLs for ALL servers (parallel)
   const resolved = await Promise.allSettled(
-    toResolve.map(s => resolveDirectUrl(s.url))
+    servers.map(s => resolveDirectUrl(s.url))
   );
 
   resolved.forEach((r, i) => {

@@ -165,8 +165,26 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [shouldUseHLS]);
 
+  const isRoleDevOrOwner = ['owner', 'dev'].includes(userRole || '');
+  const isRoleVVIP = userRole === 'vvip';
+  const isRoleVIP = userRole === 'vip';
+
   const autoSelectFastest = async () => {
     setTestingServers(true);
+
+    // Premium users get 4K auto-selected if available
+    if (isPremiumUser) {
+      const premiumIdx = servers.findIndex(s => s.premium && s.directUrl);
+      if (premiumIdx >= 0) {
+        setSelectedServer(premiumIdx);
+        setAutoSelected(true);
+        setUseHLS(servers[premiumIdx].directType === 'hls');
+        onServerChange?.(premiumIdx);
+        setTestingServers(false);
+        toast.success('4K Premium server dipilih otomatis!');
+        return;
+      }
+    }
 
     const directIdx = servers.findIndex(s => s.directUrl);
     if (directIdx >= 0) {
@@ -350,6 +368,8 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
             frameBorder="0"
+            referrerPolicy="no-referrer"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -372,7 +392,7 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
                 <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-lg border border-green-500/30">
-                      Direct Stream — No Ads
+                      Direct — No Ads
                     </span>
                     {currentServer?.premium && (
                       <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-lg border border-yellow-500/30">
@@ -448,28 +468,42 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent z-10 pointer-events-none"
+                className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/40 z-10 pointer-events-none"
               >
-                <div className="flex items-center justify-between pointer-events-auto">
-                  <button
-                    onClick={() => goToEpisode('prev')}
-                    disabled={!episodes || currentIdx <= 0}
-                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  >
-                    <HiOutlineChevronLeft className="w-4 h-4" />
-                    Prev
-                  </button>
-                  <span className="text-xs text-white/60">
-                    {currentIdx >= 0 ? `EP ${currentIdx + 1}/${episodes?.length}` : ''}
-                  </span>
-                  <button
-                    onClick={() => goToEpisode('next')}
-                    disabled={!episodes || currentIdx >= (episodes?.length || 0) - 1}
-                    className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next
-                    <HiOutlineChevronRight className="w-4 h-4" />
-                  </button>
+                <div className="absolute top-0 left-0 right-0 p-4 pointer-events-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-lg border border-blue-500/30">
+                      Iklan Diblokir
+                    </span>
+                    {currentServer?.premium && (
+                      <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-lg border border-yellow-500/30">
+                        4K Premium
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent pointer-events-auto">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => goToEpisode('prev')}
+                      disabled={!episodes || currentIdx <= 0}
+                      className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      <HiOutlineChevronLeft className="w-4 h-4" />
+                      Prev
+                    </button>
+                    <span className="text-xs text-white/60">
+                      {currentIdx >= 0 ? `EP ${currentIdx + 1}/${episodes?.length}` : ''}
+                    </span>
+                    <button
+                      onClick={() => goToEpisode('next')}
+                      disabled={!episodes || currentIdx >= (episodes?.length || 0) - 1}
+                      className="flex items-center gap-1 px-3 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-sm text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next
+                      <HiOutlineChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
