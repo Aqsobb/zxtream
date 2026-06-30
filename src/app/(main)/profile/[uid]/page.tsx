@@ -108,7 +108,7 @@ export default function ProfilePage() {
   const levelInfo = getLevelForExp(profile.totalExp);
   const progress = getProgressPercent(profile.totalExp);
   const roleConfig = getRoleConfig(profile.role);
-  const isPremium = profile.role === 'owner' || profile.role === 'vvip' || profile.role === 'vip';
+  const isPremium = profile.role === 'owner' || profile.role === 'vvip' || profile.role === 'vip' || profile.role === 'dev';
   const isDev = profile.role === 'dev';
   const isOwner = profile.role === 'owner';
   const isVVIP = profile.role === 'vvip';
@@ -497,7 +497,7 @@ export default function ProfilePage() {
         <div className="mt-6 flex flex-wrap gap-3">
           {isOwnProfile ? (
             <>
-              {!isPremium && !isDev && (
+              {!isPremium && (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
@@ -506,7 +506,7 @@ export default function ProfilePage() {
                   Upgrade Premium
                 </button>
               )}
-              {(isOwner || isDev || isOwnProfile) && (
+              {(isOwner || isDev) && (
                 <Link
                   href="/admin"
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white shadow-lg transition-all ${
