@@ -125,8 +125,21 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-dark-900/80 backdrop-blur-xl border-b border-dark-700/50 z-40">
-      <div className="flex items-center justify-between h-full px-4 lg:px-6">
+    <header className="fixed top-0 left-0 right-0 h-16 z-40">
+      {/* Animated bottom border */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-[1px] z-10"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(167,139,250,0.3), rgba(236,72,153,0.3), rgba(167,139,250,0.3), transparent)',
+          backgroundSize: '200% 100%',
+          animation: 'gradient-shift 4s ease infinite',
+        }}
+      />
+
+      {/* Header background */}
+      <div className="absolute inset-0 bg-dark-900/80 backdrop-blur-xl" />
+
+      <div className="relative z-10 flex items-center justify-between h-full px-4 lg:px-6">
         {/* Left spacer for mobile */}
         <div className="w-12 lg:hidden" />
 
@@ -141,7 +154,7 @@ export default function Header() {
               onChange={handleSearchChange}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
               placeholder="Search anime..."
-              className="w-full pl-10 pr-10 py-2 bg-dark-800/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-dark-400 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 transition-all duration-200"
+              className="w-full pl-10 pr-10 py-2 bg-dark-800/50 border border-dark-600/50 rounded-xl text-sm text-white placeholder-dark-400 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 focus:shadow-[0_0_20px_rgba(168,85,247,0.1)] transition-all duration-300"
             />
             {searchQuery && (
               <button
