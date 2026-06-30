@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getRoleConfig, UserRole } from '@/lib/roles';
+import AvatarFrame from '@/components/ui/AvatarFrame';
 
 interface RoleBadgeProps {
   role: string;
@@ -81,6 +82,17 @@ export function ProfileCard({ user, showBio = true, className = '' }: ProfileCar
   const isOwner = role === 'owner';
   const isVVIP = role === 'vvip';
   const isVIP = role === 'vip';
+  const isPremium = isDev || isOwner || isVVIP || isVIP;
+
+  // Check if this is the current user's profile
+  let isOwnProfile = false;
+  try {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      const currentUser = JSON.parse(stored);
+      isOwnProfile = currentUser?.uid === user.uid;
+    }
+  } catch {}
 
   return (
     <div
@@ -106,6 +118,57 @@ export function ProfileCard({ user, showBio = true, className = '' }: ProfileCar
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
+      )}
+
+      {/* Rotating ring for owner */}
+      {isOwner && (
+        <motion.div
+          className="absolute -inset-[2px] rounded-2xl pointer-events-none"
+          style={{
+            background: `conic-gradient(from 0deg, transparent, ${config.color}50, transparent, ${config.color}50, transparent)`,
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* Diamond shimmer for VVIP */}
+      {isVVIP && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(45deg, transparent 30%, ${config.color}15 50%, transparent 70%)`,
+            backgroundSize: '200% 200%',
+          }}
+          animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* Star sparkle for VIP */}
+      {isVIP && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {[...Array(3)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full"
+              style={{
+                background: config.color,
+                left: `${20 + i * 30}%`,
+                top: `${20 + i * 15}%`,
+              }}
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0.5, 1.5, 0.5],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.7,
+              }}
+            />
+          ))}
+        </div>
       )}
 
       {/* Floating particles for dev/owner */}
@@ -139,53 +202,27 @@ export function ProfileCard({ user, showBio = true, className = '' }: ProfileCar
         </div>
       )}
 
-      {/* Rotating ring for owner */}
-      {isOwner && (
-        <motion.div
-          className="absolute -inset-[2px] rounded-2xl pointer-events-none"
-          style={{
-            background: `conic-gradient(from 0deg, transparent, ${config.color}50, transparent, ${config.color}50, transparent)`,
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-        />
-      )}
-
-      {/* Diamond shimmer for VVIP */}
-      {isVVIP && (
-        <motion.div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `linear-gradient(45deg, transparent 30%, ${config.color}15 50%, transparent 70%)`,
-            backgroundSize: '200% 200%',
-          }}
-          animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
-          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-        />
-      )}
-
       <div className="relative z-10 p-6">
         <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <div className="relative flex-shrink-0">
-            <img
-              src={user.photoURL || '/images/default-avatar.png'}
-              alt={user.displayName}
-              className="w-20 h-20 rounded-2xl object-cover"
-              style={{
-                border: `3px solid ${config.color}80`,
-                boxShadow: config.glow !== 'none' ? `0 0 15px ${config.color}40` : undefined,
-              }}
+          {/* Avatar with frame */}
+          <div className="relative">
+            <AvatarFrame
+              src={user.photoURL || ''}
+              role={role}
+              size="xl"
             />
-            {isDev && <span className="absolute -top-2 -right-1 text-xl">⚡</span>}
-            {isOwner && <span className="absolute -top-2 -right-1 text-xl">👑</span>}
-            {isVVIP && <span className="absolute -bottom-1 -right-1 text-lg">💎</span>}
-            {isVIP && <span className="absolute -bottom-1 -right-1 text-lg">⭐</span>}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <RoleName name={user.displayName} role={role} className="text-xl" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <RoleName name={user.displayName} role={role} className="text-xl" />
+              {isOwnProfile && (
+                <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-xs text-white/80 font-medium">
+                  Kamu
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3 mt-1">
               <RoleBadge role={role} size="sm" />
               <span className="text-sm text-gray-300">Level {user.level || 1}</span>

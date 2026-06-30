@@ -41,6 +41,7 @@ export default function AnimeDetailPage() {
   const [userRating, setUserRating] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [userId, setUserId] = useState('');
+  const [similarAnime, setSimilarAnime] = useState<any[]>([]);
 
   useEffect(() => {
     try {
@@ -53,6 +54,7 @@ export default function AnimeDetailPage() {
     } catch {}
     fetchAnimeDetail();
     fetchRating();
+    fetchSimilar();
   }, [slug]);
 
   const fetchAnimeDetail = async () => {
@@ -82,6 +84,16 @@ export default function AnimeDetailPage() {
       const data = await res.json();
       if (data.success) {
         setRating({ average: data.average, count: data.count });
+      }
+    } catch {}
+  };
+
+  const fetchSimilar = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/anime/suggest?q=${encodeURIComponent(slug.replace(/-/g, ' '))}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSimilarAnime(data.data.filter((a: any) => a.slug !== slug).slice(0, 6));
       }
     } catch {}
   };
@@ -341,6 +353,38 @@ export default function AnimeDetailPage() {
                         <p className="text-xs text-gray-500">{ep.date}</p>
                       )}
                     </div>
+                  </Link>
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {/* Similar Anime */}
+          {similarAnime.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-12"
+            >
+              <h2 className="text-xl font-bold mb-5">Anime Serupa</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {similarAnime.map((a: any) => (
+                  <Link
+                    key={a.slug}
+                    href={`/anime/${a.slug}`}
+                    className="group"
+                  >
+                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white/5 mb-2">
+                      <img
+                        src={a.thumbnail}
+                        alt={a.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </div>
+                    <p className="text-sm font-medium line-clamp-2 group-hover:text-purple-400 transition-colors">
+                      {a.title}
+                    </p>
                   </Link>
                 ))}
               </div>

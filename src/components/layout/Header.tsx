@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineBell, HiOutlineSearch, HiOutlineUser, HiOutlineX } from 'react-icons/hi';
+import AvatarFrame from '@/components/ui/AvatarFrame';
 import { API_BASE } from '@/lib/config';
 
 interface SuggestItem {
@@ -227,10 +228,10 @@ export default function Header() {
                 href={`/profile/${user.uid}`}
                 className="flex items-center gap-2 p-1 rounded-xl hover:bg-dark-800 transition-all duration-200"
               >
-                <img
-                  src={user.photoURL || '/images/default-avatar.png'}
-                  alt={user.displayName}
-                  className="w-8 h-8 rounded-full"
+                <AvatarFrame
+                  src={user.photoURL}
+                  role={user.role || 'member'}
+                  size="sm"
                 />
               </Link>
             </>

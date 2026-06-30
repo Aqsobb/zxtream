@@ -24,6 +24,13 @@ interface AnimeItem {
   url: string;
 }
 
+interface HeroSlide {
+  title: string;
+  slug: string;
+  thumbnail: string;
+  synopsis?: string;
+}
+
 interface ScheduleDay {
   name: string;
   items: { title: string; slug: string }[];
@@ -34,8 +41,10 @@ export default function HomeContent() {
   const [ongoing, setOngoing] = useState<AnimeItem[]>([]);
   const [completed, setCompleted] = useState<AnimeItem[]>([]);
   const [upcoming, setUpcoming] = useState<AnimeItem[]>([]);
+  const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -48,6 +57,15 @@ export default function HomeContent() {
           setPopular(homeData.data.popular || []);
           setOngoing(homeData.data.ongoing || []);
           setSchedule(homeData.data.schedule || []);
+          if (homeData.data.hero?.length > 0) {
+            setHeroSlides(homeData.data.hero);
+          } else if (homeData.data.popular?.length > 0) {
+            setHeroSlides(homeData.data.popular.slice(0, 5).map((a: any) => ({
+              title: a.title, slug: a.slug, thumbnail: a.thumbnail, synopsis: '',
+            })));
+          }
+        } else {
+          setError(true);
         }
         if (completedData.success) {
           setCompleted(completedData.data?.items || completedData.data || []);
@@ -56,7 +74,7 @@ export default function HomeContent() {
           setUpcoming(upcomingData.data || []);
         }
       })
-      .catch(console.error)
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -86,21 +104,33 @@ export default function HomeContent() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="p-4 lg:p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">😵</div>
+          <h2 className="text-2xl font-bold text-white">Gagal Memuat Data</h2>
+          <p className="text-gray-400 max-w-md mx-auto">Terjadi kesalahan saat memuat konten. Coba muat ulang halaman atau coba lagi nanti.</p>
+          <button onClick={() => window.location.reload()} className="px-6 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-500 transition-all">
+            Muat Ulang
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 lg:p-6 space-y-8">
-      {/* Hero Slider */}
       <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <HeroSlider />
+        <HeroSlider slides={heroSlides} />
       </motion.section>
 
-      {/* Weekly Schedule */}
       {schedule.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <WeeklySchedule schedule={schedule} />
         </motion.section>
       )}
 
-      {/* Populer Hari Ini */}
       {popular.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <div className="flex items-center justify-between mb-5">
@@ -124,7 +154,6 @@ export default function HomeContent() {
         </motion.section>
       )}
 
-      {/* Rilisan Terbaru */}
       {ongoing.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="flex items-center justify-between mb-5">
@@ -148,7 +177,6 @@ export default function HomeContent() {
         </motion.section>
       )}
 
-      {/* Upcoming Donghua */}
       {upcoming.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
           <div className="flex items-center justify-between mb-5">
@@ -169,7 +197,6 @@ export default function HomeContent() {
         </motion.section>
       )}
 
-      {/* Movie / Completed */}
       {completed.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <div className="flex items-center justify-between mb-5">
@@ -193,7 +220,6 @@ export default function HomeContent() {
         </motion.section>
       )}
 
-      {/* Quick Links */}
       <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[

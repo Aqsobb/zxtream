@@ -9,6 +9,7 @@ import {
 } from 'react-icons/hi';
 import { API_BASE } from '@/lib/config';
 import Hls from 'hls.js';
+import toast from 'react-hot-toast';
 
 interface Server {
   name: string;
@@ -44,6 +45,8 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [useHLS, setUseHLS] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -55,18 +58,15 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
   const hasDirectUrl = !!currentServer?.directUrl && currentServer?.directType === 'hls';
   const shouldUseHLS = hasDirectUrl && useHLS;
 
-  // Auto-select fastest server
   useEffect(() => {
     if (servers.length <= 1) return;
     autoSelectFastest();
   }, [servers]);
 
-  // Resume playback check
   useEffect(() => {
     checkResume();
   }, [episodeId]);
 
-  // Save progress periodically
   useEffect(() => {
     saveTimerRef.current = setInterval(() => {
       saveProgress();
@@ -74,7 +74,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
     return () => clearInterval(saveTimerRef.current);
   }, [episodeId]);
 
-  // Initialize HLS when video element is ready and shouldUseHLS is true
   useEffect(() => {
     if (shouldUseHLS && videoRef.current) {
       initHLS();
@@ -107,7 +106,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
         videoRef.current?.play().catch(() => {});
       });
     } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       videoRef.current.src = currentServer.directUrl;
       videoRef.current.play().catch(() => {});
     }
@@ -125,18 +123,51 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
   }, []);
 
   useEffect(() => {
-    const handler = () => {
-      const fs = !!document.fullscreenElement;
-      // update state via ref if needed
-    };
+    const handler = () => {};
     document.addEventListener('fullscreenchange', handler);
     return () => document.removeEventListener('fullscreenchange', handler);
   }, []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!videoRef.current || !shouldUseHLS) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+          resetControlsTimer();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+          resetControlsTimer();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          videoRef.current.currentTime = Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + 10);
+          resetControlsTimer();
+          break;
+        case 'f':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'm':
+          e.preventDefault();
+          videoRef.current.muted = !videoRef.current.muted;
+          break;
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [shouldUseHLS]);
+
   const autoSelectFastest = async () => {
     setTestingServers(true);
 
-    // Prefer direct URL servers first
     const directIdx = servers.findIndex(s => s.directUrl);
     if (directIdx >= 0) {
       setSelectedServer(directIdx);
@@ -189,6 +220,9 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
     try {
       const user = JSON.parse(localStorage.getItem('user') || 'null');
       if (!user) return;
+      const currentTime = videoRef.current?.currentTime || 0;
+      const duration = videoRef.current?.duration || 0;
+      if (currentTime < 1) return;
       const epNum = episodeId.match(/episode-(\d+)/i)?.[1] || '0';
       await fetch(`${API_BASE}/api/users/progress`, {
         method: 'POST',
@@ -200,8 +234,8 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
           episodeId,
           episodeNumber: parseInt(epNum) || 0,
           title: episodeId.replace(/-/g, ' ').replace(/subtitle indonesia/gi, '').trim(),
-          progress: 1,
-          duration: 1,
+          progress: currentTime,
+          duration: duration,
         }),
       });
     } catch {}
@@ -209,9 +243,8 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
 
   const switchServer = (index: number) => {
     const server = servers[index];
-    // Check premium access
     if (server.premium && !isPremiumUser) {
-      alert('Server ini khusus premium! VIP/VVIP/Owner/Dev only.');
+      toast.error('Server ini khusus premium! VIP/VVIP/Owner/Dev only.');
       return;
     }
     setSelectedServer(index);
@@ -245,6 +278,16 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
     }
   };
 
+  const changeSpeed = (speed: number) => {
+    setPlaybackSpeed(speed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+    setShowSpeedMenu(false);
+  };
+
+  const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+
   const currentIdx = getCurrentEpisodeIndex();
 
   return (
@@ -254,7 +297,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
       onMouseMove={resetControlsTimer}
       onClick={resetControlsTimer}
     >
-      {/* Resume prompt */}
       <AnimatePresence>
         {showResumePrompt && resumeData && (
           <motion.div
@@ -291,7 +333,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
         )}
       </AnimatePresence>
 
-      {/* Video */}
       <div className="relative aspect-video">
         {shouldUseHLS ? (
           <video
@@ -319,7 +360,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
           </div>
         )}
 
-        {/* Controls overlay for HLS mode */}
         {shouldUseHLS && (
           <AnimatePresence>
             {showControls && (
@@ -340,11 +380,39 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
                       </span>
                     )}
                   </div>
-                  <button onClick={toggleFullscreen}
-                    className="p-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-white"
-                    title="Fullscreen">
-                    <HiOutlineArrowsExpand className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                        className="p-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-white text-xs font-medium"
+                        title="Playback Speed"
+                      >
+                        {playbackSpeed}x
+                      </button>
+                      {showSpeedMenu && (
+                        <div className="absolute bottom-full right-0 mb-2 bg-dark-800 border border-white/10 rounded-xl shadow-xl overflow-hidden z-30">
+                          {speeds.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => changeSpeed(s)}
+                              className={`block w-full px-4 py-2 text-sm text-left whitespace-nowrap transition-colors ${
+                                playbackSpeed === s
+                                  ? 'bg-purple-600/20 text-purple-400'
+                                  : 'text-gray-300 hover:bg-white/5'
+                              }`}
+                            >
+                              {s}x
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={toggleFullscreen}
+                      className="p-2 rounded-lg bg-black/40 hover:bg-black/60 transition-colors text-white"
+                      title="Fullscreen">
+                      <HiOutlineArrowsExpand className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 p-4 flex items-center justify-between pointer-events-auto">
@@ -373,7 +441,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
           </AnimatePresence>
         )}
 
-        {/* Controls overlay for iframe mode */}
         {!shouldUseHLS && (
           <AnimatePresence>
             {showControls && (
@@ -410,7 +477,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
         )}
       </div>
 
-      {/* Server Selection */}
       <div className="p-3 bg-dark-800 border-t border-white/5 relative">
         <div className="flex items-center justify-between">
           <button
@@ -437,7 +503,6 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
           </button>
         </div>
 
-        {/* Server Dropdown */}
         <AnimatePresence>
           {showServerDropdown && (
             <motion.div

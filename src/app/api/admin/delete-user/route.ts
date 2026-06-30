@@ -19,7 +19,22 @@ export async function POST(req: NextRequest) {
     const { uid, requesterUid } = await req.json();
     if (!requesterUid) return NextResponse.json({ success: false, error: 'Missing requesterUid' }, { status: 400 });
     if (!(await isOwner(requesterUid))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
-    await adminDb.deleteUser(uid);
+
+    // Prevent self-deletion
+    if (requesterUid === uid) {
+      return NextResponse.json({ success: false, error: 'Cannot delete yourself' }, { status: 400 });
+    }
+
+    // Prevent deleting other owners
+    const targetUser = await userDb.getUser(uid);
+    if (targetUser && (targetUser.isOwner || targetUser.role === 'owner')) {
+      return NextResponse.json({ success: false, error: 'Cannot delete another owner' }, { status: 403 });
+    }
+
+    const result = await adminDb.deleteUser(uid, requesterUid);
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

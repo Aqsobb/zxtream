@@ -8,6 +8,7 @@ import {
   HiOutlinePlay, HiOutlineChevronLeft, HiOutlineChevronRight,
   HiOutlineClock, HiOutlineBookmark, HiOutlineShare,
 } from 'react-icons/hi';
+import toast from 'react-hot-toast';
 import MainLayout from '@/components/layout/MainLayout';
 import VideoPlayer from '@/components/player/VideoPlayer';
 import Comments from '@/components/anime/Comments';
@@ -65,7 +66,6 @@ export default function WatchPage() {
       const data = await res.json();
       if (data.success) {
         setStream(data.data);
-        // Try to extract anime slug from episode URL
         extractAnimeSlug();
       }
     } catch (error) {
@@ -76,7 +76,6 @@ export default function WatchPage() {
   };
 
   const extractAnimeSlug = () => {
-    // Extract slug from episodeId pattern: anime-slug-episode-X-subtitle-indonesia
     const match = episodeId.match(/^(.+?)-episode-\d+/i);
     if (match) {
       setAnimeSlug(match[1]);
@@ -97,7 +96,7 @@ export default function WatchPage() {
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      alert('Link copied!');
+      toast.success('Link copied!');
     } catch {}
   };
 
@@ -105,14 +104,23 @@ export default function WatchPage() {
     let user;
     try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
     if (!user) { router.push('/login'); return; }
+
+    const prevState = isBookmarked;
+    setIsBookmarked(!prevState);
+
     try {
-      await fetch(`${API_BASE}/api/users/bookmark`, {
+      const res = await fetch(`${API_BASE}/api/users/bookmark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, animeSlug }),
       });
-      setIsBookmarked(!isBookmarked);
-    } catch {}
+      const data = await res.json();
+      if (data.success !== undefined && !data.success) {
+        setIsBookmarked(prevState);
+      }
+    } catch {
+      setIsBookmarked(prevState);
+    }
   };
 
   const currentIdx = episodes.findIndex(ep =>
@@ -129,7 +137,6 @@ export default function WatchPage() {
   return (
     <MainLayout>
       <div className="p-4 lg:p-6 max-w-6xl mx-auto">
-        {/* Player */}
         <VideoPlayer
           servers={stream?.servers || []}
           episodeId={episodeId}
@@ -138,7 +145,6 @@ export default function WatchPage() {
           userRole={userRole}
         />
 
-        {/* Info Bar */}
         <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-bold text-white">
@@ -166,7 +172,6 @@ export default function WatchPage() {
           </div>
         </div>
 
-        {/* Episode List */}
         {episodes.length > 0 && (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
@@ -201,7 +206,6 @@ export default function WatchPage() {
           </div>
         )}
 
-        {/* Comments */}
         <Comments type="episode" targetId={episodeId} />
       </div>
     </MainLayout>

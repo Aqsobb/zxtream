@@ -16,6 +16,9 @@ export interface RoleConfig {
   title?: string;
   bannerGradient?: string;
   profileEffect?: string;
+  emoticons: string[];
+  maxEmoticons: number;
+  canCustomEmoticon: boolean;
 }
 
 export const ROLES: Record<UserRole, RoleConfig> = {
@@ -33,6 +36,9 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     title: 'The Creator',
     bannerGradient: 'linear-gradient(135deg, #0f0c29 0%, #302b63 30%, #24243e 60%, #0f0c29 100%)',
     profileEffect: 'matrix-rain',
+    emoticons: ['⚡', '🔥', '💀', '🗿', '😈', '👾', '🤖', '👻', '🎭', '🎪', '🎨', '🎬', '🎤', '🎧', '🎵', '💎', '👑', '🦊', '🐉', ' unicorn', '🌈', '⚡', '🚀', '💫', '✨', '🎉', '🎊', '💯', '🏆', '⚜️'],
+    maxEmoticons: 999,
+    canCustomEmoticon: true,
   },
   owner: {
     name: 'owner',
@@ -48,6 +54,9 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     title: 'Boss Besar',
     bannerGradient: 'linear-gradient(135deg, #1a0533 0%, #2d1b4e 25%, #4a1942 50%, #2d1b4e 75%, #1a0533 100%)',
     profileEffect: 'golden-explosion',
+    emoticons: ['👑', '🔥', '💀', '🗿', '😈', '👾', '🤖', '👻', '🎭', '🎪', '🎨', '🎬', '🎤', '🎧', '🎵', '💎', '⭐', '🦊', '🐉', '🌈', '🚀', '💫', '✨', '🎉', '🎊', '💯', '🏆', '⚜️', '👁️‍🗨️', '🏴‍☠️'],
+    maxEmoticons: 999,
+    canCustomEmoticon: true,
   },
   vvip: {
     name: 'vvip',
@@ -63,6 +72,9 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     title: 'Diamond Member',
     bannerGradient: 'linear-gradient(135deg, #2d1b4e 0%, #6b21a8 30%, #a855f7 50%, #6b21a8 70%, #2d1b4e 100%)',
     profileEffect: 'diamond-shimmer',
+    emoticons: ['💎', '✨', '🔥', '💀', '🗿', '😈', '👻', '⭐', '💫', '🎉', '🎊', '💯', '🏆', '💜', '🦄', '🌸', '🦋', '🌙', '⭐'],
+    maxEmoticons: 20,
+    canCustomEmoticon: false,
   },
   vip: {
     name: 'vip',
@@ -77,6 +89,9 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     title: 'VIP Member',
     bannerGradient: 'linear-gradient(135deg, #0c1a3a 0%, #1e3a5f 30%, #2563eb 50%, #1e3a5f 70%, #0c1a3a 100%)',
     profileEffect: 'star-glow',
+    emoticons: ['⭐', '🔥', '💀', '🗿', '😊', '😎', '🤩', '💯', '✨', '🎉', '👍', '❤️'],
+    maxEmoticons: 12,
+    canCustomEmoticon: false,
   },
   member: {
     name: 'member',
@@ -90,9 +105,20 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     title: '',
     bannerGradient: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #111827 100%)',
     profileEffect: '',
+    emoticons: [],
+    maxEmoticons: 0,
+    canCustomEmoticon: false,
   },
 };
 
 export function getRoleConfig(role: string): RoleConfig {
   return ROLES[role as UserRole] || ROLES.member;
+}
+
+export function canUseEmoticon(role: string): boolean {
+  return ['owner', 'dev', 'vvip', 'vip'].includes(role);
+}
+
+export function getEmoticonSet(role: string): string[] {
+  return getRoleConfig(role).emoticons;
 }

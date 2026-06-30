@@ -9,6 +9,7 @@ import {
   HiOutlineBell, HiOutlineChartBar, HiOutlineLink, HiOutlineGlobe,
   HiOutlineCurrencyDollar, HiOutlineExclamation,
 } from 'react-icons/hi';
+import toast from 'react-hot-toast';
 import MainLayout from '@/components/layout/MainLayout';
 import RoleBadge from '@/components/ui/RoleBadge';
 import { API_BASE } from '@/lib/config';
@@ -163,68 +164,124 @@ export default function AdminPage() {
   };
 
   const handleDeleteCode = async (code: string) => {
-    if (!currentUser || !confirm(`Delete code "${code}"?`)) return;
-    await fetch(`${API_BASE}/api/admin/codes`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, requesterUid: currentUser.uid }),
-    });
-    fetchAll();
+    if (!currentUser) return;
+    if (!confirm(`Delete code "${code}"?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/codes`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, requesterUid: currentUser.uid }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Code deleted!');
+        fetchAll();
+      } else {
+        toast.error(data.error || 'Gagal hapus code');
+      }
+    } catch {
+      toast.error('Gagal hapus code');
+    }
   };
 
   const handleSetRole = async (uid: string, role: string) => {
     if (!currentUser) return;
-    await fetch(`${API_BASE}/api/admin/role`, {
+    const res = await fetch(`${API_BASE}/api/admin/role`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, role, requesterUid: currentUser.uid }),
     });
-    fetchAll();
+    const data = await res.json();
+    if (data.success) {
+      toast.success('Role updated!');
+      fetchAll();
+    } else {
+      toast.error(data.error || 'Gagal update role');
+    }
   };
 
   const handleBan = async (uid: string) => {
     if (!currentUser) return;
-    await fetch(`${API_BASE}/api/admin/ban`, {
+    const res = await fetch(`${API_BASE}/api/admin/ban`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
     });
-    fetchAll();
+    const data = await res.json();
+    if (data.success) {
+      toast.success('User banned!');
+      fetchAll();
+    } else {
+      toast.error(data.error || 'Gagal ban user');
+    }
   };
 
   const handleUnban = async (uid: string) => {
     if (!currentUser) return;
-    await fetch(`${API_BASE}/api/admin/unban`, {
+    const res = await fetch(`${API_BASE}/api/admin/unban`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
     });
-    fetchAll();
+    const data = await res.json();
+    if (data.success) {
+      toast.success('User unbanned!');
+      fetchAll();
+    } else {
+      toast.error(data.error || 'Gagal unban user');
+    }
   };
 
-  const handleDeleteUser = async (uid: string) => {
-    if (!currentUser || !confirm('Delete this user permanently?')) return;
-    await fetch(`${API_BASE}/api/admin/delete-user`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
-    });
-    fetchAll();
+  const handleDeleteUser = async (uid: string, displayName: string) => {
+    if (!currentUser) return;
+    if (currentUser.uid === uid) {
+      toast.error('Tidak bisa hapus diri sendiri!');
+      return;
+    }
+    if (!confirm(`Hapus user "${displayName}" secara permanen?`)) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/delete-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, requesterUid: currentUser.uid }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`User "${displayName}" berhasil dihapus!`);
+        fetchAll();
+      } else {
+        toast.error(data.error || 'Gagal menghapus user');
+      }
+    } catch (e) {
+      toast.error('Gagal menghapus user');
+    }
   };
 
   const handleDeleteComment = async (comment: Comment) => {
-    if (!currentUser || !confirm('Delete this comment?')) return;
-    await fetch(`${API_BASE}/api/admin/comments`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        commentId: comment.id,
-        type: comment.type,
-        targetId: comment.targetId,
-        requesterUid: currentUser.uid,
-      }),
-    });
-    fetchAll();
+    if (!currentUser) return;
+    if (!confirm('Delete this comment?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/comments`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commentId: comment.id,
+          type: comment.type,
+          targetId: comment.targetId,
+          requesterUid: currentUser.uid,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Comment deleted!');
+        fetchAll();
+      } else {
+        toast.error(data.error || 'Gagal hapus comment');
+      }
+    } catch {
+      toast.error('Gagal hapus comment');
+    }
   };
 
   const handleSaveTheme = async () => {
@@ -283,7 +340,7 @@ export default function AdminPage() {
       });
       setBroadcastTitle('');
       setBroadcastMsg('');
-      alert('Broadcast sent!');
+      toast.success('Broadcast sent!');
     } catch {} finally {
       setSendingBroadcast(false);
     }
@@ -295,19 +352,24 @@ export default function AdminPage() {
     if (!confirm('DELETE ALL non-premium users (member only)? This cannot be undone!')) return;
     if (!confirm('ARE YOU REALLY SURE? This deletes ALL member accounts!')) return;
 
-    const nonPremium = users.filter(u => !u.isOwner && u.role === 'member');
+    const nonPremium = users.filter(u => !u.isOwner && u.role === 'member' && u.uid !== currentUser.uid);
     let deleted = 0;
+    let failed = 0;
     for (const u of nonPremium) {
       try {
-        await fetch(`${API_BASE}/api/admin/delete-user`, {
+        const res = await fetch(`${API_BASE}/api/admin/delete-user`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ uid: u.uid, requesterUid: currentUser.uid }),
         });
-        deleted++;
-      } catch {}
+        const data = await res.json();
+        if (data.success) deleted++;
+        else failed++;
+      } catch {
+        failed++;
+      }
     }
-    alert(`Deleted ${deleted} non-premium users`);
+    toast.success(`Berhasil hapus ${deleted} user${failed > 0 ? `, ${failed} gagal` : ''}`);
     fetchAll();
   };
 
@@ -432,17 +494,19 @@ export default function AdminPage() {
                   {users
                     .filter(u => !userSearch || u.displayName?.toLowerCase().includes(userSearch.toLowerCase()) || u.uid.includes(userSearch))
                     .map((user) => (
-                    <div key={user.uid} className={`flex items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl ${user.banned ? 'opacity-50' : ''}`}>
-                      <img src={user.photoURL || '/images/default-avatar.png'} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">{user.displayName}</span>
-                          <RoleBadge role={user.role} size="sm" showLabel={false} />
-                          {user.banned && <span className="text-xs text-red-400">BANNED</span>}
+                    <div key={user.uid} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white/5 border border-white/5 rounded-xl ${user.banned ? 'opacity-50' : ''}`}>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <img src={user.photoURL || '/images/default-avatar.png'} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium truncate">{user.displayName}</span>
+                            <RoleBadge role={user.role} size="sm" showLabel={false} />
+                            {user.banned && <span className="text-xs text-red-400">BANNED</span>}
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">{user.uid} | Lvl {user.level} | {user.totalExp} EXP</p>
                         </div>
-                        <p className="text-xs text-gray-500">{user.uid} | Lvl {user.level} | {user.totalExp} EXP</p>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap sm:flex-nowrap">
                         <select
                           value={user.role}
                           onChange={(e) => handleSetRole(user.uid, e.target.value)}
@@ -458,8 +522,8 @@ export default function AdminPage() {
                         ) : (
                           <button onClick={() => handleBan(user.uid)} className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-xs">Ban</button>
                         )}
-                        {!user.isOwner && (
-                          <button onClick={() => handleDeleteUser(user.uid)} className="px-2 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs">
+                        {!user.isOwner && user.uid !== currentUser?.uid && (
+                          <button onClick={() => handleDeleteUser(user.uid, user.displayName)} className="px-2 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs hover:bg-red-500/30 transition-colors" title="Hapus user">
                             <HiOutlineTrash className="w-3 h-3" />
                           </button>
                         )}

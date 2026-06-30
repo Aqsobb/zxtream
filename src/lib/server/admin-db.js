@@ -23,8 +23,8 @@ async function generateCode(type, value, maxUses = 1, description = '') {
   for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
 
   const codeData = {
-    type,       // 'owner', 'vvip', 'vip', 'premium', 'exp', 'coins'
-    value,      // role name or amount
+    type,
+    value,
     maxUses,
     usedBy: {},
     description,
@@ -44,7 +44,6 @@ async function redeemCode(code, uid, displayName) {
     return { success: false, error: 'Code already used' };
   }
 
-  // Mark as used
   const usedUpdate = {};
   usedUpdate[`codes/${code}/usedBy/${uid}`] = {
     displayName,
@@ -52,7 +51,6 @@ async function redeemCode(code, uid, displayName) {
   };
   await axios.patch(authUrl(''), usedUpdate);
 
-  // Apply reward
   let roleUpdate = {};
   let message = '';
 
@@ -155,9 +153,76 @@ async function unbanUser(uid) {
   }
 }
 
-async function deleteUser(uid) {
+async function deleteUser(uid, requesterUid) {
   try {
+    // Safety: check requester is owner
+    if (requesterUid) {
+      const requester = await getSimpleUser(requesterUid);
+      if (!requester || (!requester.isOwner && requester.role !== 'owner')) {
+        return { success: false, error: 'Only owners can delete users' };
+      }
+      // Safety: can't delete yourself
+      if (requesterUid === uid) {
+        return { success: false, error: 'Cannot delete yourself' };
+      }
+      // Safety: can't delete other owners
+      const target = await getSimpleUser(uid);
+      if (target && (target.isOwner || target.role === 'owner')) {
+        return { success: false, error: 'Cannot delete another owner' };
+      }
+    }
+
+    // Clean up related data in parallel
+    const cleanupPromises = [];
+
+    // 1. Delete user's comments
+    for (const type of ['anime', 'episode']) {
+      cleanupPromises.push(
+        axios.get(authUrl(`comments/${type}`)).then(({ data }) => {
+          if (!data) return;
+          const deletions = [];
+          for (const [targetId, comments] of Object.entries(data)) {
+            for (const [cid, comment] of Object.entries(comments)) {
+              if (comment.uid === uid) {
+                deletions.push(axios.delete(authUrl(`comments/${type}/${targetId}/${cid}`)));
+              }
+            }
+          }
+          return Promise.all(deletions);
+        }).catch(() => {})
+      );
+    }
+
+    // 2. Delete user's ratings
+    cleanupPromises.push(
+      axios.get(authUrl('ratings')).then(({ data }) => {
+        if (!data) return;
+        const deletions = [];
+        for (const [targetId, ratings] of Object.entries(data)) {
+          if (ratings[uid]) {
+            deletions.push(axios.delete(authUrl(`ratings/${targetId}/${uid}`)));
+          }
+        }
+        return Promise.all(deletions);
+      }).catch(() => {})
+    );
+
+    // 3. Delete user's notifications
+    cleanupPromises.push(
+      axios.delete(authUrl(`notifications/${uid}`)).catch(() => {})
+    );
+
+    // 4. Delete user's progress
+    cleanupPromises.push(
+      axios.delete(authUrl(`progress/${uid}`)).catch(() => {})
+    );
+
+    // Wait for cleanup
+    await Promise.all(cleanupPromises);
+
+    // 5. Delete the user node
     await axios.delete(authUrl(`users/${uid}`));
+
     return { success: true };
   } catch (e) {
     return { success: false, error: e.message };

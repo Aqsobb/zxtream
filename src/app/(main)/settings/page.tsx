@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { HiOutlineUser, HiOutlineCog, HiOutlineShieldCheck, HiOutlineBell, HiOutlineLogout, HiOutlineGlobe, HiOutlineUserGroup } from 'react-icons/hi';
+import toast from 'react-hot-toast';
 import MainLayout from '@/components/layout/MainLayout';
 import PushNotificationManager from '@/components/ui/PushNotificationManager';
 import { signOut } from 'firebase/auth';
@@ -20,18 +21,21 @@ export default function SettingsPage() {
   const [country, setCountry] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Site settings
   const [siteName, setSiteName] = useState('Z.XTREAM');
   const [siteDescription, setSiteDescription] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#a78bfa');
   const [accentColor, setAccentColor] = useState('#ec4899');
   const [savingSite, setSavingSite] = useState(false);
 
-  // Admin user management
   const [adminTargetUid, setAdminTargetUid] = useState('');
   const [adminTargetTitle, setAdminTargetTitle] = useState('');
   const [adminTargetRole, setAdminTargetRole] = useState('');
   const [savingAdmin, setSavingAdmin] = useState(false);
+
+  // Preferences state (connected to localStorage)
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [autoNext, setAutoNext] = useState(true);
+  const [defaultQuality, setDefaultQuality] = useState('auto');
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -44,6 +48,14 @@ export default function SettingsPage() {
     } else {
       router.push('/login');
     }
+
+    // Load preferences from localStorage
+    try {
+      const prefs = JSON.parse(localStorage.getItem('playerPreferences') || '{}');
+      if (prefs.autoPlay !== undefined) setAutoPlay(prefs.autoPlay);
+      if (prefs.autoNext !== undefined) setAutoNext(prefs.autoNext);
+      if (prefs.defaultQuality) setDefaultQuality(prefs.defaultQuality);
+    } catch {}
   }, []);
 
   const fetchProfile = async (uid: string) => {
@@ -72,16 +84,27 @@ export default function SettingsPage() {
     } catch {}
   };
 
+  const savePreferences = (key: string, value: any) => {
+    try {
+      const prefs = JSON.parse(localStorage.getItem('playerPreferences') || '{}');
+      prefs[key] = value;
+      localStorage.setItem('playerPreferences', JSON.stringify(prefs));
+    } catch {}
+  };
+
   const handleSaveProfile = async () => {
     if (!user) return;
     setSaving(true);
-
     try {
       await fetch(`${API_BASE}/api/users/profile/${user.uid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName, bio, country }),
       });
+      // Update localStorage
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      stored.displayName = displayName;
+      localStorage.setItem('user', JSON.stringify(stored));
     } catch (error) {
       console.error('Failed to save profile:', error);
     } finally {
@@ -131,12 +154,12 @@ export default function SettingsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('User updated!');
+        toast.success('User updated!');
         setAdminTargetUid('');
         setAdminTargetTitle('');
         setAdminTargetRole('');
       } else {
-        alert(data.error || 'Failed to update user');
+        toast.error(data.error || 'Failed to update user');
       }
     } catch {} finally {
       setSavingAdmin(false);
@@ -161,7 +184,6 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Sidebar */}
           <div className="lg:w-48">
             <nav className="flex lg:flex-col gap-2 overflow-x-auto">
               {tabs.map((tab) => (
@@ -188,7 +210,6 @@ export default function SettingsPage() {
             </nav>
           </div>
 
-          {/* Content */}
           <div className="flex-1">
             {activeTab === 'profile' && (
               <motion.div
@@ -252,17 +273,50 @@ export default function SettingsPage() {
                 <div className="glass p-6 rounded-2xl">
                   <h2 className="text-lg font-bold mb-4">Player Preferences</h2>
                   <div className="space-y-4">
-                    <label className="flex items-center justify-between">
+                    <label className="flex items-center justify-between cursor-pointer">
                       <span>Auto Play</span>
-                      <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-800 text-primary-600" />
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={autoPlay}
+                          onChange={(e) => {
+                            setAutoPlay(e.target.checked);
+                            savePreferences('autoPlay', e.target.checked);
+                          }}
+                          className="sr-only"
+                        />
+                        <div className={`w-11 h-6 rounded-full transition-colors ${autoPlay ? 'bg-primary-600' : 'bg-dark-600'}`}>
+                          <div className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${autoPlay ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                        </div>
+                      </div>
                     </label>
-                    <label className="flex items-center justify-between">
+                    <label className="flex items-center justify-between cursor-pointer">
                       <span>Auto Next Episode</span>
-                      <input type="checkbox" defaultChecked className="w-5 h-5 rounded border-dark-600 bg-dark-600 text-primary-600" />
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={autoNext}
+                          onChange={(e) => {
+                            setAutoNext(e.target.checked);
+                            savePreferences('autoNext', e.target.checked);
+                          }}
+                          className="sr-only"
+                        />
+                        <div className={`w-11 h-6 rounded-full transition-colors ${autoNext ? 'bg-primary-600' : 'bg-dark-600'}`}>
+                          <div className={`w-5 h-5 rounded-full bg-white shadow transform transition-transform mt-0.5 ${autoNext ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+                        </div>
+                      </div>
                     </label>
                     <div>
                       <label className="block text-sm font-medium text-dark-300 mb-1">Default Quality</label>
-                      <select className="input">
+                      <select
+                        value={defaultQuality}
+                        onChange={(e) => {
+                          setDefaultQuality(e.target.value);
+                          savePreferences('defaultQuality', e.target.value);
+                        }}
+                        className="input"
+                      >
                         <option value="auto">Auto</option>
                         <option value="360p">360p</option>
                         <option value="480p">480p</option>
@@ -392,7 +446,7 @@ export default function SettingsPage() {
               >
                 <h2 className="text-lg font-bold mb-4">Manage User</h2>
                 <p className="text-sm text-gray-400 mb-4">
-                  Change user titles and roles. Enter the user's UID.
+                  Change user titles and roles. Enter the user&apos;s UID.
                 </p>
                 <div className="space-y-4">
                   <div>
@@ -424,9 +478,9 @@ export default function SettingsPage() {
                     >
                       <option value="">Keep current</option>
                       <option value="member">Member</option>
-                      <option value="vip">VIP ⭐</option>
-                      <option value="vvip">VVIP 💎</option>
-                      <option value="owner">Owner 👑</option>
+                      <option value="vip">VIP</option>
+                      <option value="vvip">VVIP</option>
+                      <option value="owner">Owner</option>
                     </select>
                   </div>
                   <button

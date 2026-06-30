@@ -51,7 +51,7 @@ export default function LeaderboardPage() {
   const tabs = [
     { id: 'exp', label: 'Top EXP', icon: HiOutlineStar },
     { id: 'watchtime', label: 'Watch Time', icon: HiOutlineClock },
-    { id: 'comments', label: 'Comments', icon: HiOutlineChartBar },
+    { id: 'comments', label: 'Most Comments', icon: HiOutlineChartBar },
   ];
 
   const getRankIcon = (rank: number) => {
@@ -67,12 +67,26 @@ export default function LeaderboardPage() {
     }
   };
 
+  const formatStat = (entry: LeaderboardEntry) => {
+    switch (activeTab) {
+      case 'exp':
+        return `${(entry.exp || entry.totalExp || 0).toLocaleString()} EXP`;
+      case 'watchtime':
+        const hours = Math.floor((entry.watchTime || 0) / 3600);
+        const minutes = Math.floor(((entry.watchTime || 0) % 3600) / 60);
+        return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+      case 'comments':
+        return `${(entry.totalExp || 0).toLocaleString()} comments`;
+      default:
+        return '';
+    }
+  };
+
   return (
     <MainLayout>
       <div className="p-4 lg:p-6">
         <h1 className="text-2xl font-bold mb-6">Leaderboard</h1>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -90,7 +104,6 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Leaderboard List */}
         {loading ? (
           <div className="space-y-3">
             {[...Array(10)].map((_, i) => (
@@ -120,19 +133,16 @@ export default function LeaderboardPage() {
                       : 'bg-dark-800/50 hover:bg-dark-700/50'
                   }`}
                 >
-                  {/* Rank */}
                   <div className="w-12 h-12 flex items-center justify-center">
                     {getRankIcon(entry.rank)}
                   </div>
 
-                  {/* Avatar */}
                   <img
                     src={entry.photoURL || '/images/default-avatar.png'}
                     alt={entry.displayName}
                     className="w-12 h-12 rounded-full"
                   />
 
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium truncate">{entry.displayName}</h3>
@@ -141,12 +151,9 @@ export default function LeaderboardPage() {
                     <p className="text-sm text-dark-400">{entry.title}</p>
                   </div>
 
-                  {/* Stats */}
                   <div className="text-right">
                     <p className="font-bold text-primary-400">
-                      {activeTab === 'exp' && `${(entry.exp || entry.totalExp || 0).toLocaleString()} EXP`}
-                      {activeTab === 'watchtime' && `${Math.floor((entry.watchTime || 0) / 3600)}h`}
-                      {activeTab === 'comments' && `${(entry.totalExp || 0).toLocaleString()} EXP`}
+                      {formatStat(entry)}
                     </p>
                     <p className="text-sm text-dark-400">Level {entry.level}</p>
                   </div>

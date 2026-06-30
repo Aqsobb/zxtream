@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { HiOutlinePlay, HiOutlineChevronLeft, HiOutlineChevronRight } from 'react-icons/hi';
-import { API_BASE } from '@/lib/config';
 
 import 'swiper/css';
 import 'swiper/css/navigation';
@@ -18,30 +16,12 @@ interface HeroSlide {
   synopsis?: string;
 }
 
-export default function HeroSlider() {
-  const [slides, setSlides] = useState<HeroSlide[]>([]);
+interface HeroSliderProps {
+  slides: HeroSlide[];
+}
 
-  useEffect(() => {
-    fetch(`${API_BASE}/api/anime/home`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && data.data.hero?.length > 0) {
-          setSlides(data.data.hero);
-        } else if (data.success && data.data.popular?.length > 0) {
-          // Fallback: use top 5 popular as hero slides
-          setSlides(data.data.popular.slice(0, 5).map((a: any) => ({
-            title: a.title,
-            slug: a.slug,
-            thumbnail: a.thumbnail,
-            synopsis: '',
-          })));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
+export default function HeroSlider({ slides }: HeroSliderProps) {
   if (slides.length === 0) {
-    // Static fallback
     return (
       <div className="relative h-[280px] sm:h-[360px] lg:h-[420px] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/50 to-pink-900/30 border border-white/5">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -76,21 +56,19 @@ export default function HeroSlider() {
         pagination={{ clickable: true }}
         autoplay={{ delay: 5000, disableOnInteraction: false }}
         loop={slides.length > 1}
+        keyboard={{ enabled: true }}
         className="rounded-2xl overflow-hidden h-[280px] sm:h-[360px] lg:h-[420px]"
       >
         {slides.map((slide, i) => (
           <SwiperSlide key={`${slide.slug}-${i}`}>
             <div className="relative w-full h-full">
-              {/* Background image */}
               <div
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${slide.thumbnail})` }}
               />
-              {/* Overlays */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-              {/* Content */}
               <div className="absolute inset-0 flex items-end sm:items-center p-6 sm:p-10">
                 <div className="max-w-lg">
                   <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white mb-3 leading-tight drop-shadow-lg">
@@ -115,13 +93,12 @@ export default function HeroSlider() {
         ))}
       </Swiper>
 
-      {/* Custom navigation */}
       {slides.length > 1 && (
         <>
-          <button className="hero-prev absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 border border-white/10">
+          <button className="hero-prev absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 border border-white/10 sm:opacity-0">
             <HiOutlineChevronLeft className="w-5 h-5" />
           </button>
-          <button className="hero-next absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 border border-white/10">
+          <button className="hero-next absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 border border-white/10 sm:opacity-0">
             <HiOutlineChevronRight className="w-5 h-5" />
           </button>
         </>

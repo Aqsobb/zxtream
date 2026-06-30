@@ -27,6 +27,7 @@ import {
 } from 'react-icons/hi';
 import { FaFire, FaCrown, FaUserShield } from 'react-icons/fa';
 import RoleBadge from '@/components/ui/RoleBadge';
+import AvatarFrame from '@/components/ui/AvatarFrame';
 import { API_BASE } from '@/lib/config';
 
 const navItems = [
@@ -54,12 +55,16 @@ const genreLinks = [
   { label: 'Drama', href: '/search?q=drama' },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  popularList?: any[];
+}
+
+export default function Sidebar({ popularList: popularProp }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [popularList, setPopularList] = useState<any[]>([]);
+  const [popularList, setPopularList] = useState<any[]>(popularProp || []);
 
   useEffect(() => {
     try {
@@ -67,17 +72,24 @@ export default function Sidebar() {
       if (stored) setUser(JSON.parse(stored));
     } catch {}
 
-    fetch(`${API_BASE}/api/anime/home`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.success) setPopularList((d.data.popular || []).slice(0, 10));
-      })
-      .catch(() => {});
+    if ((!popularProp || popularProp.length === 0) && popularList.length === 0) {
+      fetch(`${API_BASE}/api/anime/home`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) setPopularList((d.data.popular || []).slice(0, 10));
+        })
+        .catch(() => {});
+    }
   }, []);
+
+  useEffect(() => {
+    if (popularProp && popularProp.length > 0) {
+      setPopularList(popularProp);
+    }
+  }, [popularProp]);
 
   return (
     <>
-      {/* Mobile menu button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-4 left-4 z-50 p-2 glass rounded-xl lg:hidden"
@@ -85,7 +97,6 @@ export default function Sidebar() {
         {isOpen ? <HiOutlineX className="w-6 h-6" /> : <HiOutlineMenu className="w-6 h-6" />}
       </button>
 
-      {/* Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -98,14 +109,12 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-full w-64 bg-dark-900/95 backdrop-blur-xl border-r border-dark-700/50 z-50 transition-transform duration-300 lg:translate-x-0 overflow-y-auto ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div className="flex flex-col min-h-full">
-          {/* Logo */}
           <Link href="/home" className="flex items-center gap-3 px-6 py-5 border-b border-dark-700/50">
             <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-accent-pink rounded-xl flex items-center justify-center">
               <FaFire className="w-6 h-6 text-white" />
@@ -116,7 +125,6 @@ export default function Sidebar() {
             </div>
           </Link>
 
-          {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
@@ -140,7 +148,6 @@ export default function Sidebar() {
               );
             })}
 
-            {/* Browse section */}
             <div className="pt-3 mt-3 border-t border-dark-700/50">
               <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Browse</p>
               {browseItems.map((item) => {
@@ -166,7 +173,6 @@ export default function Sidebar() {
               })}
             </div>
 
-            {/* Genre quick links */}
             <div className="pt-3 mt-3 border-t border-dark-700/50">
               <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Genre</p>
               <div className="flex flex-wrap gap-1.5 px-4 pt-2">
@@ -183,7 +189,6 @@ export default function Sidebar() {
               </div>
             </div>
 
-            {/* Popular Ranking Widget */}
             {popularList.length > 0 && (
               <div className="pt-3 mt-3 border-t border-dark-700/50">
                 <p className="px-4 py-1 text-xs font-semibold text-dark-500 uppercase tracking-wider">Populer</p>
@@ -213,7 +218,6 @@ export default function Sidebar() {
             )}
           </nav>
 
-          {/* User section */}
           <div className="px-3 py-4 border-t border-dark-700/50">
             {user ? (
               <div className="space-y-2">
@@ -222,15 +226,12 @@ export default function Sidebar() {
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-dark-800 transition-all duration-200"
                 >
-                  <img
-                    src={user.photoURL || '/images/default-avatar.png'}
-                    alt={user.displayName}
-                    className="w-8 h-8 rounded-full"
-                    style={{
-                      boxShadow: (user.role === 'owner' || user.role === 'vvip')
-                        ? `0 0 12px ${(user.role === 'owner' ? '#f59e0b' : '#a855f7')}60`
-                        : undefined
-                    }}
+                  <AvatarFrame
+                    src={user.photoURL}
+                    role={user.role || 'member'}
+                    size="md"
+                    showStatus
+                    isOnline
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{user.displayName}</p>

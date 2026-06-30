@@ -19,19 +19,38 @@ interface WeeklyScheduleProps {
   schedule: ScheduleDay[];
 }
 
-const DAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu', 'Minggu', 'Acak'];
+const DAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', "Jum'at", 'Sabtu', 'Minggu', 'Acak'];
+
+function normalizeDay(name: string): string {
+  if (name === "Jum'at") return 'Jumat';
+  return name;
+}
 
 export default function WeeklySchedule({ schedule }: WeeklyScheduleProps) {
   const [activeDay, setActiveDay] = useState(() => {
     const dayIdx = new Date().getDay();
-    return DAYS_ORDER[dayIdx === 0 ? 6 : dayIdx - 1] || 'Senin';
+    const map = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return map[dayIdx] || 'Senin';
   });
 
   if (!schedule || schedule.length === 0) return null;
 
-  const sortedSchedule = DAYS_ORDER.filter(d =>
-    schedule.some(s => s.name === d)
-  ).map(d => schedule.find(s => s.name === d)!);
+  const normalizedSchedule = schedule.map(s => ({
+    ...s,
+    name: normalizeDay(s.name),
+  }));
+
+  const uniqueDays = DAYS_ORDER.filter(d => {
+    const nd = normalizeDay(d);
+    return normalizedSchedule.some(s => s.name === nd);
+  }).filter((d, i, arr) => {
+    const nd = normalizeDay(d);
+    return arr.findIndex(x => normalizeDay(x) === nd) === i;
+  });
+
+  const sortedSchedule = uniqueDays
+    .map(d => normalizedSchedule.find(s => s.name === normalizeDay(d))!)
+    .filter(Boolean);
 
   const activeItems = sortedSchedule.find(s => s.name === activeDay)?.items || [];
 
@@ -44,7 +63,6 @@ export default function WeeklySchedule({ schedule }: WeeklyScheduleProps) {
         <h2 className="text-xl font-bold">Jadwal Rilis</h2>
       </div>
 
-      {/* Day tabs */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {sortedSchedule.map(day => (
           <button
@@ -62,7 +80,6 @@ export default function WeeklySchedule({ schedule }: WeeklyScheduleProps) {
         ))}
       </div>
 
-      {/* Items */}
       <motion.div
         key={activeDay}
         initial={{ opacity: 0, y: 10 }}

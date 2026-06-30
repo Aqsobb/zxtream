@@ -19,6 +19,16 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const createUserDoc = async (uid: string, data: any) => {
+    try {
+      await fetch(`${API_BASE}/api/users/profile/${uid}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch {}
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -42,31 +52,27 @@ export default function RegisterPage() {
       await updateProfile(user, { displayName });
       await sendEmailVerification(user);
 
-      // Create user document in Firestore
-      await fetch(`${API_BASE}/api/users/profile/${user.uid}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName,
-          level: 1,
-          exp: 0,
-          totalExp: 0,
-          title: 'Rookie',
-          badges: [],
-          achievements: [],
-          watchTime: 0,
-          favorites: [],
-          bookmarks: [],
-          history: [],
-          followers: [],
-          following: [],
-          isAdmin: false,
-          isModerator: false,
-          isVerified: false,
-          isBanned: false,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }),
+      await createUserDoc(user.uid, {
+        displayName,
+        photoURL: user.photoURL || '',
+        email: user.email,
+        level: 1,
+        exp: 0,
+        totalExp: 0,
+        title: 'Rookie',
+        badges: [],
+        achievements: [],
+        watchTime: 0,
+        favorites: [],
+        bookmarks: [],
+        followers: [],
+        following: [],
+        isAdmin: false,
+        isModerator: false,
+        isVerified: false,
+        isBanned: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       });
 
       localStorage.setItem('user', JSON.stringify({
@@ -74,6 +80,11 @@ export default function RegisterPage() {
         email: user.email,
         displayName,
         photoURL: user.photoURL,
+        level: 1,
+        exp: 0,
+        totalExp: 0,
+        title: 'Rookie',
+        role: 'member',
       }));
 
       router.push('/home');
@@ -85,21 +96,53 @@ export default function RegisterPage() {
   };
 
   const handleGoogleRegister = async () => {
+    setError('');
+    setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      await createUserDoc(user.uid, {
+        displayName: user.displayName || '',
+        photoURL: user.photoURL || '',
+        email: user.email,
+        level: 1,
+        exp: 0,
+        totalExp: 0,
+        title: 'Rookie',
+        badges: [],
+        achievements: [],
+        watchTime: 0,
+        favorites: [],
+        bookmarks: [],
+        followers: [],
+        following: [],
+        isAdmin: false,
+        isModerator: false,
+        isVerified: false,
+        isBanned: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
 
       localStorage.setItem('user', JSON.stringify({
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
+        level: 1,
+        exp: 0,
+        totalExp: 0,
+        title: 'Rookie',
+        role: 'member',
       }));
 
       router.push('/home');
     } catch (error: any) {
       setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,7 +153,6 @@ export default function RegisterPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/home" className="inline-flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-pink rounded-xl flex items-center justify-center">
@@ -120,7 +162,6 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        {/* Form */}
         <div className="glass p-6 rounded-2xl">
           <h1 className="text-2xl font-bold text-center mb-6">Create Account</h1>
 
@@ -200,25 +241,23 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="flex-1 h-px bg-dark-600" />
             <span className="text-sm text-dark-400">or continue with</span>
             <div className="flex-1 h-px bg-dark-600" />
           </div>
 
-          {/* Social Login */}
           <div className="flex gap-3">
             <button
               onClick={handleGoogleRegister}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-dark-700 rounded-xl hover:bg-dark-600 transition-colors"
+              disabled={loading}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-dark-700 rounded-xl hover:bg-dark-600 transition-colors disabled:opacity-50"
             >
               <FaGoogle className="w-5 h-5" />
               <span>Google</span>
             </button>
           </div>
 
-          {/* Login link */}
           <p className="text-center mt-6 text-sm text-dark-300">
             Already have an account?{' '}
             <Link href="/login" className="text-primary-400 hover:text-primary-300 font-medium">

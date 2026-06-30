@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiOutlineChat, HiOutlineThumbUp, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineChat, HiOutlineThumbUp, HiOutlineTrash, HiOutlineEmojiHappy } from 'react-icons/hi';
+import AvatarFrame from '@/components/ui/AvatarFrame';
 import RoleBadge, { RoleName } from '@/components/ui/RoleBadge';
-import { getRoleConfig } from '@/lib/roles';
+import { getRoleConfig, canUseEmoticon, getEmoticonSet } from '@/lib/roles';
 import { API_BASE } from '@/lib/config';
+import toast from 'react-hot-toast';
 
 interface Comment {
   id: string;
@@ -31,12 +33,24 @@ export default function Comments({ type, targetId }: CommentsProps) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showEmoticonPicker, setShowEmoticonPicker] = useState(false);
+  const emoticonRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
     if (stored) setCurrentUser(JSON.parse(stored));
     fetchComments();
   }, [type, targetId]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emoticonRef.current && !emoticonRef.current.contains(e.target as Node)) {
+        setShowEmoticonPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchComments = async () => {
     try {
@@ -55,11 +69,10 @@ export default function Comments({ type, targetId }: CommentsProps) {
   const handlePost = async () => {
     if (!currentUser || !newComment.trim()) return;
 
-    // Emoji check: member can't use emojis, only vip/vvip/owner/dev
     const hasEmoji = EMOJI_REGEX.test(newComment);
-    const canUseEmoji = ['vip', 'vvip', 'owner', 'dev'].includes(currentUser.role);
-    if (hasEmoji && !canUseEmoji) {
-      alert('Hanya VIP, VVIP, Owner, dan Dev yang bisa pakai emoji di komentar!');
+    const canEmoji = canUseEmoticon(currentUser.role);
+    if (hasEmoji && !canEmoji) {
+      toast.error('Hanya VIP, VVIP, Owner, dan Dev yang bisa pakai emoji!');
       return;
     }
 
@@ -81,6 +94,7 @@ export default function Comments({ type, targetId }: CommentsProps) {
       const data = await res.json();
       if (data.success) {
         setNewComment('');
+        setShowEmoticonPicker(false);
         fetchComments();
       }
     } catch (error) {
@@ -126,7 +140,13 @@ export default function Comments({ type, targetId }: CommentsProps) {
     return new Date(ts).toLocaleDateString('id-ID');
   };
 
-  const canUseEmoji = currentUser && ['vip', 'vvip', 'owner', 'dev'].includes(currentUser.role);
+  const insertEmoticon = (emoji: string) => {
+    setNewComment(prev => prev + emoji);
+    setShowEmoticonPicker(false);
+  };
+
+  const canEmoji = currentUser && canUseEmoticon(currentUser.role);
+  const emoticonSet = currentUser ? getEmoticonSet(currentUser.role) : [];
 
   return (
     <div className="mt-8">
@@ -138,36 +158,86 @@ export default function Comments({ type, targetId }: CommentsProps) {
       {/* Post comment */}
       {currentUser ? (
         <div className="flex gap-3 mb-6">
-          <img
-            src={currentUser.photoURL || '/images/default-avatar.png'}
-            alt=""
-            className="w-10 h-10 rounded-full flex-shrink-0"
+          <AvatarFrame
+            src={currentUser.photoURL}
+            role={currentUser.role || 'member'}
+            size="md"
           />
           <div className="flex-1">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={canUseEmoji ? "Write a comment... (emoji allowed)" : "Write a comment... (no emoji for member)"}
-              className="w-full p-3 bg-dark-800 border border-white/10 rounded-xl text-white placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50"
-              rows={2}
-            />
-            <div className="flex items-center justify-between mt-2">
-              {!canUseEmoji && (
-                <span className="text-xs text-gray-500">💡 VIP+ bisa pakai emoji</span>
+            <div className="relative">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder={canEmoji ? "Tulis komentar... (emoji allowed ✨)" : "Tulis komentar..."}
+                className="w-full p-3 pr-10 bg-dark-800 border border-white/10 rounded-xl text-white placeholder-gray-500 resize-none focus:outline-none focus:border-purple-500/50 transition-colors"
+                rows={2}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handlePost();
+                  }
+                }}
+              />
+              {canEmoji && emoticonSet.length > 0 && (
+                <div ref={emoticonRef} className="absolute right-2 bottom-2">
+                  <button
+                    onClick={() => setShowEmoticonPicker(!showEmoticonPicker)}
+                    className="p-1.5 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-yellow-400"
+                    title="Emoticon"
+                  >
+                    <HiOutlineEmojiHappy className="w-5 h-5" />
+                  </button>
+                  <AnimatePresence>
+                    {showEmoticonPicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute bottom-full right-0 mb-2 p-3 bg-dark-800 border border-white/10 rounded-xl shadow-2xl z-20 w-64"
+                      >
+                        <p className="text-xs text-gray-400 mb-2">
+                          Emoticon ({currentUser.role})
+                          {currentUser.role === 'owner' || currentUser.role === 'dev' ? (
+                            <span className="text-yellow-400 ml-1">Unlimited</span>
+                          ) : (
+                            <span className="text-gray-500 ml-1">{emoticonSet.length} available</span>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {emoticonSet.map((emoji, i) => (
+                            <button
+                              key={i}
+                              onClick={() => insertEmoticon(emoji)}
+                              className="w-8 h-8 flex items-center justify-center text-lg hover:bg-white/10 rounded-lg transition-colors hover:scale-110"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               )}
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              {!canEmoji && (
+                <span className="text-xs text-gray-500">VIP+ bisa pakai emoji</span>
+              )}
+              <div className="flex-1" />
               <button
                 onClick={handlePost}
                 disabled={!newComment.trim() || posting}
                 className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {posting ? 'Posting...' : 'Post'}
+                {posting ? 'Posting...' : 'Kirim'}
               </button>
             </div>
           </div>
         </div>
       ) : (
         <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center text-gray-400 mb-6">
-          Login to comment
+          Login untuk berkomentar
         </div>
       )}
 
@@ -183,7 +253,7 @@ export default function Comments({ type, targetId }: CommentsProps) {
           Belum ada komentar. Jadikan yang pertama!
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <AnimatePresence>
             {comments.map((comment) => {
               const roleConfig = getRoleConfig(comment.role);
@@ -199,30 +269,45 @@ export default function Comments({ type, targetId }: CommentsProps) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className={`relative overflow-hidden rounded-xl p-4 ${
-                    isDev ? 'border border-cyan-500/30' :
-                    isOwner ? 'border border-yellow-500/30' :
-                    isVVIP ? 'border border-purple-500/30' :
-                    isVIP ? 'border border-blue-500/30' :
-                    'border border-white/5 bg-white/5'
-                  }`}
-                  style={{
-                    background: isDev ? 'linear-gradient(135deg, rgba(6,182,212,0.08), rgba(6,182,212,0.02))' :
-                               isOwner ? 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))' :
-                               isVVIP ? 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(168,85,247,0.02))' :
-                               isVIP ? 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02))' :
-                               undefined,
-                    boxShadow: isDev ? '0 0 20px rgba(6,182,212,0.15)' :
-                               isOwner ? '0 0 20px rgba(245,158,11,0.15)' :
-                               isVVIP ? '0 0 15px rgba(168,85,247,0.12)' :
-                               isVIP ? '0 0 10px rgba(59,130,246,0.1)' :
-                               undefined,
-                  }}
+                  className="relative overflow-hidden"
                 >
-                  {/* Floating particles for dev/owner */}
-                  {(isDev || isOwner) && (
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                      {[...Array(4)].map((_, i) => (
+                  {/* Role-specific background */}
+                  <div
+                    className="absolute inset-0 rounded-xl"
+                    style={{
+                      background: isDev
+                        ? 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(6,182,212,0.02))'
+                        : isOwner
+                        ? 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.03))'
+                        : isVVIP
+                        ? 'linear-gradient(135deg, rgba(168,85,247,0.1), rgba(168,85,247,0.02))'
+                        : isVIP
+                        ? 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02))'
+                        : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${isPremium ? roleConfig.color + '30' : 'rgba(255,255,255,0.05)'}`,
+                    }}
+                  />
+
+                  {/* Glow effect for owner/dev */}
+                  {isPremium && (
+                    <div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{
+                        boxShadow: isDev
+                          ? '0 0 20px rgba(6,182,212,0.15), inset 0 0 20px rgba(6,182,212,0.05)'
+                          : isOwner
+                          ? '0 0 25px rgba(245,158,11,0.2), inset 0 0 25px rgba(245,158,11,0.05)'
+                          : isVVIP
+                          ? '0 0 15px rgba(168,85,247,0.15), inset 0 0 15px rgba(168,85,247,0.03)'
+                          : '0 0 10px rgba(59,130,246,0.1)',
+                      }}
+                    />
+                  )}
+
+                  {/* Floating particles for owner */}
+                  {isOwner && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+                      {[...Array(5)].map((_, i) => (
                         <motion.div
                           key={i}
                           className="absolute rounded-full"
@@ -234,8 +319,8 @@ export default function Comments({ type, targetId }: CommentsProps) {
                             bottom: '0%',
                           }}
                           animate={{
-                            y: [0, -60 - Math.random() * 40],
-                            x: [0, (Math.random() - 0.5) * 30],
+                            y: [0, -50 - Math.random() * 30],
+                            x: [0, (Math.random() - 0.5) * 20],
                             opacity: [0.8, 0],
                             scale: [1, 0],
                           }}
@@ -250,42 +335,43 @@ export default function Comments({ type, targetId }: CommentsProps) {
                     </div>
                   )}
 
-                  <div className="relative z-10 flex gap-3">
-                    <img
-                      src={comment.photoURL || '/images/default-avatar.png'}
-                      alt=""
-                      className="w-10 h-10 rounded-full flex-shrink-0"
-                      style={{
-                        border: isPremium ? `2px solid ${roleConfig.color}60` : undefined,
-                        boxShadow: isDev ? `0 0 10px ${roleConfig.color}40` :
-                                   isOwner ? `0 0 10px ${roleConfig.color}40` :
-                                   isVVIP ? `0 0 8px ${roleConfig.color}30` : undefined,
-                      }}
+                  {/* Content */}
+                  <div className="relative z-10 p-3.5 flex gap-3">
+                    <AvatarFrame
+                      src={comment.photoURL}
+                      role={comment.role}
+                      size="md"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <RoleName name={comment.displayName} role={comment.role} className="text-sm" />
                         <RoleBadge role={comment.role} size="sm" showLabel={false} />
                         <span className="text-xs text-gray-500">{formatTime(comment.createdAt)}</span>
                       </div>
-                      <p className={`text-sm ${isDev ? 'text-cyan-100' : isOwner ? 'text-yellow-100' : isVVIP ? 'text-purple-100' : isVIP ? 'text-blue-100' : 'text-gray-200'}`}>
+                      <p className={`text-sm leading-relaxed ${
+                        isDev ? 'text-cyan-100' :
+                        isOwner ? 'text-amber-100' :
+                        isVVIP ? 'text-purple-100' :
+                        isVIP ? 'text-blue-100' :
+                        'text-gray-200'
+                      }`}>
                         {comment.text}
                       </p>
                       <div className="flex items-center gap-4 mt-2">
                         <button
                           onClick={() => handleLike(comment.id)}
-                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-purple-400 transition-colors"
+                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-purple-400 transition-colors group"
                         >
-                          <HiOutlineThumbUp className="w-4 h-4" />
-                          {comment.likes?.length || 0}
+                          <HiOutlineThumbUp className="w-4 h-4 group-hover:fill-purple-400/30 transition-all" />
+                          <span>{comment.likes?.length || 0}</span>
                         </button>
                         {(currentUser?.uid === comment.uid || currentUser?.role === 'owner' || currentUser?.role === 'dev') && (
                           <button
                             onClick={() => handleDelete(comment.id)}
                             className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-400 transition-colors"
                           >
-                            <HiOutlineTrash className="w-4 h-4" />
-                            Delete
+                            <HiOutlineTrash className="w-3.5 h-3.5" />
+                            Hapus
                           </button>
                         )}
                       </div>
