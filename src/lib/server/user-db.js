@@ -124,7 +124,7 @@ async function getLeaderboard(orderBy = 'totalExp', limit = 100) {
             for (const cmts of Object.values(targets)) {
               if (typeof cmts === 'object' && cmts !== null) {
                 for (const c of Object.values(cmts)) {
-                  const uid = (c as any).uid;
+                  const uid = c ? c.uid : null;
                   if (uid) commentCounts[uid] = (commentCounts[uid] || 0) + 1;
                 }
               }
