@@ -384,7 +384,7 @@ export function DevInfoSection() {
         </div>
         <div className="space-y-3 text-sm">
           <p className="text-purple-100 text-base leading-relaxed font-medium">
-            &quot;Bukan Tuhan. Tapi yang ngoding semua ini dari nol. Setiap baris kode, setiap pixel, setiap fitur — keluar dari tangan gw.&quot;
+            &quot;Yang ngoding semua ini dari nol. Setiap baris kode, setiap pixel, setiap fitur — keluar dari tangan gw.&quot;
           </p>
           <p className="text-purple-200/50 text-xs">
             Gw yang bikin sistem ini, gw yang bisa hancurin. Tapi gw pilih untuk jaga. 🔥⚡

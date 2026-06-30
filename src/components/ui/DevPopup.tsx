@@ -237,7 +237,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  ⚡ Bukan Tuhan. Tapi yang bikin semuanya. ⚡
+                  ⚡ Yang bikin semuanya. ⚡
                 </motion.span>
               </div>
 
