@@ -294,9 +294,34 @@ export function DevInfoSection() {
         boxShadow: '0 0 30px rgba(139,92,246,0.3), 0 0 60px rgba(168,85,247,0.15), 0 0 100px rgba(99,102,241,0.05)',
       }}
     >
-      {/* Galaxy stars */}
+      {/* Galaxy wave background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute h-[200px] w-[200%]"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${['#a78bfa', '#818cf8', '#60a5fa'][i]}20, transparent)`,
+              top: `${20 + i * 30}%`,
+              borderRadius: '50%',
+            }}
+            animate={{
+              x: ['-25%', '25%', '-25%'],
+              opacity: [0.3, 0.6, 0.3],
+            }}
+            transition={{
+              duration: 6 + i * 2,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: i * 1.5,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Stars */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(25)].map((_, i) => (
+        {[...Array(30)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute rounded-full bg-white"
@@ -307,19 +332,19 @@ export function DevInfoSection() {
               top: `${Math.random() * 100}%`,
             }}
             animate={{
-              opacity: [0.1, 0.8, 0.1],
-              scale: [0.5, 1.2, 0.5],
+              opacity: [0.1, 0.9, 0.1],
+              scale: [0.5, 1.3, 0.5],
             }}
             transition={{
-              duration: 1.5 + Math.random() * 2,
+              duration: 1.5 + Math.random() * 3,
               repeat: Infinity,
-              delay: Math.random() * 4,
+              delay: Math.random() * 5,
             }}
           />
         ))}
       </div>
 
-      {/* Animated galaxy border */}
+      {/* Animated border */}
       <motion.div
         className="absolute inset-0 rounded-2xl pointer-events-none"
         style={{
@@ -329,36 +354,21 @@ export function DevInfoSection() {
           WebkitMaskComposite: 'xor',
           maskComposite: 'exclude',
         }}
-        animate={{ opacity: [0.4, 0.9, 0.4] }}
+        animate={{ opacity: [0.3, 0.8, 0.3] }}
         transition={{ duration: 3, repeat: Infinity }}
       />
 
-      {/* Galaxy nebula glow */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
-        }}
-        animate={{
-          background: [
-            'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
-            'radial-gradient(ellipse at 60% 40%, rgba(168,85,247,0.2) 0%, transparent 50%), radial-gradient(ellipse at 40% 60%, rgba(99,102,241,0.15) 0%, transparent 50%)',
-            'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
-          ],
-        }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-      />
-
       <div className="relative z-10">
+        {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <motion.span
             className="text-4xl"
             animate={{
               scale: [1, 1.2, 1],
-              rotate: [0, 5, -5, 0],
+              rotate: [0, 8, -8, 0],
               filter: [
                 'drop-shadow(0 0 5px rgba(139,92,246,0.6))',
-                'drop-shadow(0 0 15px rgba(168,85,247,0.9))',
+                'drop-shadow(0 0 20px rgba(168,85,247,1))',
                 'drop-shadow(0 0 5px rgba(139,92,246,0.6))',
               ],
             }}
@@ -379,36 +389,46 @@ export function DevInfoSection() {
             >
               ꧁༺ DEV Z.XTREAM ༻꧂
             </motion.h3>
-            <p className="text-xs text-purple-300/60 font-mono">Level 99999 • Penghancur & Pencipta</p>
+            <p className="text-xs text-purple-300/60 font-mono">Level ∞ • Penghancur & Pencipta</p>
           </div>
         </div>
+
+        {/* Funny bio */}
         <div className="space-y-3 text-sm">
           <p className="text-purple-100 text-base leading-relaxed font-medium">
-            &quot;Yang ngoding semua ini dari nol. Setiap baris kode, setiap pixel, setiap fitur — keluar dari tangan gw.&quot;
+            &quot;Bukan frontend developer. Bukan backend developer. Gw fullstack nightmare kalian. Yang ngoding sambil rebahan, yang debug sambil ngopi, yang deploy sambil berdoa.&quot;
           </p>
           <p className="text-purple-200/50 text-xs">
-            Gw yang bikin sistem ini, gw yang bisa hancurin. Tapi gw pilih untuk jaga. 🔥⚡
+            Setiap baris kode ada setan kecilnya. Tapi gw jinaknya. 💀🔥
           </p>
-          <div className="flex items-center gap-4 pt-2">
-            <span className="text-purple-400 font-bold">⚡ Penghancur & Pencipta</span>
-            <span className="text-gray-500">|</span>
-            <span className="text-gray-300 font-mono">UID: 33333</span>
-            <span className="text-gray-500">|</span>
-            <motion.span
-              className="font-bold"
-              style={{
-                background: 'linear-gradient(135deg, #c084fc, #818cf8)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-              animate={{ opacity: [0.7, 1, 0.7] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              LV. 99999
-            </motion.span>
+        </div>
+
+        {/* Contact & Credits */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
+            <p className="text-[10px] text-purple-400/60 font-semibold uppercase tracking-wider mb-1">📞 Kontol... eh Kontak</p>
+            <p className="text-sm font-mono text-purple-200">UID: 33333</p>
+            <p className="text-sm font-mono text-purple-200">WA: 6285656715298</p>
+            <p className="text-[10px] text-purple-300/50 mt-1">Kritik, saran, req fitur, atau mau traktir kopi ☕</p>
+          </div>
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+            <p className="text-[10px] text-indigo-400/60 font-semibold uppercase tracking-wider mb-1">🔧 Tech Stack</p>
+            <p className="text-xs font-mono text-indigo-200">Next.js 15 • Firebase • Tailwind</p>
+            <p className="text-xs font-mono text-indigo-200">Framer Motion • react-hot-toast</p>
+            <p className="text-[10px] text-indigo-300/50 mt-1">Source: anichin.moe (thanks anichin!)</p>
           </div>
         </div>
+
+        {/* Footer */}
+        <motion.div
+          className="mt-4 pt-3 border-t border-purple-500/20 text-center"
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 3, repeat: Infinity }}
+        >
+          <p className="text-[10px] text-purple-400/40 font-mono">
+            ⚡ 99999% oc 🖥️ Dibuat dengan kopi, mie instan, dan kebencian terhadap CSS ⚡
+          </p>
+        </motion.div>
       </div>
     </div>
   );

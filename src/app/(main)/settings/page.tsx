@@ -96,17 +96,26 @@ export default function SettingsPage() {
     if (!user) return;
     setSaving(true);
     try {
+      const body: any = { displayName, bio, country };
+      if (user.role === 'dev' && (user as any).avatarVideo) {
+        body.photoURL = (user as any).avatarVideo;
+      }
       await fetch(`${API_BASE}/api/users/profile/${user.uid}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, bio, country }),
+        body: JSON.stringify(body),
       });
       // Update localStorage
       const stored = JSON.parse(localStorage.getItem('user') || '{}');
       stored.displayName = displayName;
+      if (user.role === 'dev' && (user as any).avatarVideo) {
+        stored.photoURL = (user as any).avatarVideo;
+      }
       localStorage.setItem('user', JSON.stringify(stored));
+      toast.success('Profile saved!');
     } catch (error) {
       console.error('Failed to save profile:', error);
+      toast.error('Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -253,6 +262,23 @@ export default function SettingsPage() {
                       <option value="OTHER">Other</option>
                     </select>
                   </div>
+                  {user?.role === 'dev' && (
+                    <div className="pt-4 border-t border-white/10">
+                      <label className="block text-sm font-medium text-purple-400 mb-1">⚡ Avatar Video URL (dev only)</label>
+                      <input
+                        type="text"
+                        placeholder="https://example.com/avatar.mp4"
+                        value={(user as any).avatarVideo || ''}
+                        onChange={(e) => {
+                          const updated = { ...user, avatarVideo: e.target.value };
+                          localStorage.setItem('user', JSON.stringify(updated));
+                          setUser(updated);
+                        }}
+                        className="input"
+                      />
+                      <p className="text-[10px] text-purple-300/50 mt-1">Support .mp4, .webm, .gif — avatar lo bakal bergerak! 🎬</p>
+                    </div>
+                  )}
                   <button
                     onClick={handleSaveProfile}
                     disabled={saving}

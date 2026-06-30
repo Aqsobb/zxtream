@@ -28,6 +28,7 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
   const isVVIP = role === 'vvip';
   const isVIP = role === 'vip';
   const isPremium = isDev || isOwner || isVVIP || isVIP;
+  const isVideo = src && (src.endsWith('.mp4') || src.endsWith('.webm') || src.endsWith('.gif'));
 
   return (
     <div className={`relative flex-shrink-0 ${className}`} style={{ width: s.ring, height: s.ring }}>
@@ -164,11 +165,22 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
         } : undefined}
         transition={isOwner && animated ? { duration: 2, repeat: Infinity } : undefined}
       >
-        <img
-          src={src || '/images/default-avatar.png'}
-          alt=""
-          className="w-full h-full object-cover"
-        />
+        {isVideo ? (
+          <video
+            src={src}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <img
+            src={src || '/images/default-avatar.png'}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        )}
 
         {/* Owner crown overlay */}
         {isOwner && (
