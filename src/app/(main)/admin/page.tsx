@@ -91,8 +91,8 @@ export default function AdminPage() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     setCurrentUser(user);
-    setIsOwner(user?.role === 'owner' || user?.isOwner === true);
-    if (user?.role === 'owner' || user?.isOwner) {
+    setIsOwner(user?.role === 'owner' || user?.isOwner === true || user?.role === 'dev' || user?.isDev === true);
+    if (user?.role === 'owner' || user?.isOwner || user?.role === 'dev' || user?.isDev) {
       fetchAll();
     }
   }, []);

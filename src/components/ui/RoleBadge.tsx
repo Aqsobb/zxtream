@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { getRoleConfig, UserRole } from '@/lib/roles';
 import AvatarFrame from '@/components/ui/AvatarFrame';
+import DevPopup from '@/components/ui/DevPopup';
 
 interface RoleBadgeProps {
   role: string;
@@ -48,7 +49,8 @@ export function RoleName({ name, role, className = '' }: RoleNameProps) {
 
   return (
     <span className={`relative inline-flex items-center gap-2 ${className}`}>
-      {config.crown && <span className="text-lg">👑</span>}
+      {role === 'dev' && <span className="text-lg">⚡</span>}
+      {config.crown && role !== 'dev' && <span className="text-lg">👑</span>}
       {config.diamond && <span className="text-lg">💎</span>}
       {config.star && <span className="text-lg">⭐</span>}
       <span style={{ color: config.color }} className="font-bold">{name}</span>
@@ -206,17 +208,21 @@ export function ProfileCard({ user, showBio = true, className = '' }: ProfileCar
         <div className="flex items-center gap-4">
           {/* Avatar with frame */}
           <div className="relative">
-            <AvatarFrame
-              src={user.photoURL || ''}
-              role={role}
-              size="xl"
-            />
+            <DevPopup user={user}>
+              <AvatarFrame
+                src={user.photoURL || ''}
+                role={role}
+                size="xl"
+              />
+            </DevPopup>
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <RoleName name={user.displayName} role={role} className="text-xl" />
+              <DevPopup user={user}>
+                <RoleName name={user.displayName} role={role} className="text-xl" />
+              </DevPopup>
               {isOwnProfile && (
                 <span className="px-2 py-0.5 bg-white/10 border border-white/20 rounded-full text-xs text-white/80 font-medium">
                   Kamu
@@ -278,26 +284,80 @@ export function OwnerInfoSection() {
 export function DevInfoSection() {
   return (
     <div
-      className="rounded-2xl border border-cyan-500/20 p-6"
+      className="relative overflow-hidden rounded-2xl border border-cyan-500/40 p-6"
       style={{
         background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 30%, #24243e 60%, #0f0c29 100%)',
+        boxShadow: '0 0 30px rgba(6, 182, 212, 0.3), 0 0 60px rgba(6, 182, 212, 0.15), 0 0 100px rgba(6, 182, 212, 0.05)',
       }}
     >
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">⚡</span>
-        <h3 className="text-xl font-extrabold text-cyan-400">Developer Z.XTREAM</h3>
+      {/* Matrix rain background */}
+      <div className="absolute inset-0 opacity-10 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute text-cyan-400 text-[10px] font-mono whitespace-nowrap"
+            style={{ left: `${i * 5}%`, top: '-20%' }}
+            animate={{ y: ['0%', '600%'] }}
+            transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, delay: i * 0.3, ease: 'linear' }}
+          >
+            {Array.from({ length: 15 }, () => String.fromCharCode(0x30A0 + Math.random() * 96)).join('\n')}
+          </motion.div>
+        ))}
       </div>
-      <div className="space-y-3 text-sm">
-        <p className="text-cyan-100 text-base leading-relaxed">
-          &quot;Setiap error yang kamu fix, setiap bug yang kamu debug, setiap feature yang kamu ship — itu semua langkah kecil menuju sesuatu yang luar biasa. Keep building, keep shipping.&quot;
-        </p>
-        <p className="text-cyan-200/60 text-xs">
-          Dari yang nggak ngerti HTML sampai bisa build full-stack streaming platform. Coding is not about talent, it&apos;s about persistence. 🚀
-        </p>
-        <div className="flex items-center gap-4 pt-2">
-          <span className="text-cyan-400 font-bold">⚡ The Creator</span>
-          <span className="text-gray-500">|</span>
-          <span className="text-gray-300">UID: 33333</span>
+
+      {/* Animated border */}
+      <motion.div
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{
+          border: '2px solid transparent',
+          background: 'linear-gradient(135deg, #06b6d480, transparent 30%, transparent 70%, #06b6d480) border-box',
+          WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+        }}
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      />
+
+      {/* Lightning sparks */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-0.5 h-4 rounded-full bg-cyan-400"
+            style={{ left: `${10 + Math.random() * 80}%`, top: `${10 + Math.random() * 60}%` }}
+            animate={{ opacity: [0, 1, 0], scaleY: [0.3, 1, 0.3] }}
+            transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.8 + Math.random() }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10">
+        <div className="flex items-center gap-3 mb-4">
+          <motion.span
+            className="text-4xl"
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >⚡</motion.span>
+          <div>
+            <h3 className="text-xl font-extrabold text-cyan-400">⚡ DEV Z.XTREAM ⚡</h3>
+            <p className="text-xs text-cyan-300/60 font-mono">Level 99999 • Penghancur & Pencipta</p>
+          </div>
+        </div>
+        <div className="space-y-3 text-sm">
+          <p className="text-cyan-100 text-base leading-relaxed font-medium">
+            &quot;Bukan Tuhan. Tapi yang ngoding semua ini dari nol. Setiap baris kode, setiap pixel, setiap fitur — keluar dari tangan gw.&quot;
+          </p>
+          <p className="text-cyan-200/50 text-xs">
+            Gw yang bikin sistem ini, gw yang bisa hancurin. Tapi gw pilih untuk jaga. 🔥⚡
+          </p>
+          <div className="flex items-center gap-4 pt-2">
+            <span className="text-cyan-400 font-bold">⚡ Penghancur & Pencipta</span>
+            <span className="text-gray-500">|</span>
+            <span className="text-gray-300 font-mono">UID: 33333</span>
+            <span className="text-gray-500">|</span>
+            <span className="text-cyan-500 font-bold">LV. 99999</span>
+          </div>
         </div>
       </div>
     </div>

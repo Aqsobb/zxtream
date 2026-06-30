@@ -10,7 +10,7 @@ async function isOwner(uid: string): Promise<boolean> {
   if (uid === DEV_UID) return true;
   try {
     const user = await userDb.getUser(uid);
-    return user && (user.isOwner || user.role === 'owner');
+    return user && (user.isOwner || user.role === 'owner' || user.role === 'dev' || user.isDev);
   } catch { return false; }
 }
 

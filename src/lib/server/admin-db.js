@@ -98,7 +98,7 @@ async function redeemCode(code, uid, displayName) {
 // --- Comments admin ---
 async function deleteComment(commentId, requesterUid) {
   const requester = await getSimpleUser(requesterUid);
-  if (!requester || (!requester.isOwner && requester.role !== 'owner' && requester.role !== 'vvip')) {
+  if (!requester || (!requester.isOwner && requester.role !== 'owner' && requester.role !== 'dev' && !requester.isDev && requester.role !== 'vvip')) {
     return { success: false, error: 'Not authorized' };
   }
 

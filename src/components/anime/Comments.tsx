@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineChat, HiOutlineThumbUp, HiOutlineTrash, HiOutlineEmojiHappy, HiOutlineReply, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
 import AvatarFrame from '@/components/ui/AvatarFrame';
 import RoleBadge, { RoleName } from '@/components/ui/RoleBadge';
+import DevPopup from '@/components/ui/DevPopup';
 import { getRoleConfig, canUseEmoticon, getEmoticonSet } from '@/lib/roles';
 import { API_BASE } from '@/lib/config';
 import toast from 'react-hot-toast';
@@ -294,14 +295,18 @@ export default function Comments({ type, targetId }: CommentsProps) {
 
         {/* Content */}
         <div className={`relative z-10 p-3.5 flex gap-3 ${isReply ? 'py-2.5' : ''}`}>
-          <AvatarFrame
-            src={comment.photoURL}
-            role={comment.role}
-            size={isReply ? 'sm' : 'md'}
-          />
+          <DevPopup user={comment}>
+            <AvatarFrame
+              src={comment.photoURL}
+              role={comment.role}
+              size={isReply ? 'sm' : 'md'}
+            />
+          </DevPopup>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <RoleName name={comment.displayName} role={comment.role} className="text-sm" />
+              <DevPopup user={comment}>
+                <RoleName name={comment.displayName} role={comment.role} className="text-sm" />
+              </DevPopup>
               <RoleBadge role={comment.role} size="sm" showLabel={false} />
               <span className="text-xs text-gray-500">{formatTime(comment.createdAt)}</span>
             </div>

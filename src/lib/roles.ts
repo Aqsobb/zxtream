@@ -24,7 +24,7 @@ export interface RoleConfig {
 export const ROLES: Record<UserRole, RoleConfig> = {
   dev: {
     name: 'dev',
-    label: 'DEVELOPER',
+    label: '⚡ DEVELOPER',
     color: '#06b6d4',
     gradient: 'from-cyan-500 via-blue-500 to-indigo-500',
     glow: '0 0 25px rgba(6, 182, 212, 0.6), 0 0 50px rgba(6, 182, 212, 0.3), 0 0 80px rgba(6, 182, 212, 0.15)',
@@ -32,11 +32,11 @@ export const ROLES: Record<UserRole, RoleConfig> = {
     border: 'border-cyan-500/60',
     animation: 'animate-pulse',
     particles: true,
-    crown: true,
-    title: 'The Creator',
+    crown: false,
+    title: 'Penghancur & Pencipta',
     bannerGradient: 'linear-gradient(135deg, #0f0c29 0%, #302b63 30%, #24243e 60%, #0f0c29 100%)',
     profileEffect: 'matrix-rain',
-    emoticons: ['⚡', '🔥', '💀', '🗿', '😈', '👾', '🤖', '👻', '🎭', '🎪', '🎨', '🎬', '🎤', '🎧', '🎵', '💎', '👑', '🦊', '🐉', ' unicorn', '🌈', '⚡', '🚀', '💫', '✨', '🎉', '🎊', '💯', '🏆', '⚜️'],
+    emoticons: ['⚡', '🔥', '💀', '🗿', '😈', '👾', '🤖', '👻', '🎭', '🎪', '🎨', '🎬', '🎤', '🎧', '🎵', '💎', '👑', '🦊', '🐉', '🦄', '🌈', '🚀', '💫', '✨', '🎉', '🎊', '💯', '🏆', '⚜️', '🗡️', '⚔️', '🛡️', '💣', '🧨', '🔱'],
     maxEmoticons: 999,
     canCustomEmoticon: true,
   },
