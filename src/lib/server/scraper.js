@@ -37,8 +37,16 @@ async function trySources(fnName, ...args) {
 }
 
 // === Home ===
-async function getHomeAnime(forceRefresh = false) {
-  // Try fresh from anichin first
+async function getHomeAnime() {
+  // Check Firebase storage first (instant, no waiting)
+  const stored = await storage.getHomePage();
+  if (stored && stored.popular?.length > 0) {
+    const age = Date.now() - (stored._savedAt || 0);
+    // If data is < 15 min old, return immediately (no scrape)
+    if (age < 15 * 60 * 1000) return stored;
+  }
+
+  // If no stored data or stale, scrape fresh from anichin
   try {
     const fresh = await anichin.getHome();
     if (fresh && fresh.popular?.length > 0) {
@@ -47,8 +55,7 @@ async function getHomeAnime(forceRefresh = false) {
     }
   } catch {}
 
-  // Fallback to stored
-  const stored = await storage.getHomePage();
+  // Fallback: return stored even if stale
   if (stored && stored.popular?.length > 0) return stored;
 
   // Last resort: sansekai drama
@@ -166,8 +173,14 @@ async function getAnimeByGenre(genre, page = 1) {
   } catch { return []; }
 }
 
-// === Drama API (direct) ===
+// === Drama API (direct) — Firebase first, scrape only if stale ===
 async function getDramaDetail(bookId) {
+  const stored = await storage.getDrama(bookId);
+  if (stored?.title) {
+    const age = Date.now() - (stored._savedAt || 0);
+    if (age < 30 * 60 * 1000) return stored; // 30 min cache from Firebase
+  }
+
   try {
     const fresh = await sansekai.getDramaDetail(bookId);
     if (fresh?.title) {
@@ -176,12 +189,17 @@ async function getDramaDetail(bookId) {
     }
   } catch {}
 
-  const stored = await storage.getDrama(bookId);
   if (stored?.title) return stored;
   return null;
 }
 
 async function getDramaEpisodes(bookId) {
+  const stored = await storage.getDramaEpisodes(bookId);
+  if (stored?.length > 0) {
+    // Episodes rarely change, use 1 hour cache
+    return stored;
+  }
+
   try {
     const fresh = await sansekai.getDramaEpisodes(bookId);
     if (fresh?.length > 0) {
@@ -190,7 +208,7 @@ async function getDramaEpisodes(bookId) {
     }
   } catch {}
 
-  return await storage.getDramaEpisodes(bookId);
+  return stored;
 }
 
 async function searchDrama(query) {
