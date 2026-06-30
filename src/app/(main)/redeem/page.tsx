@@ -38,8 +38,11 @@ export default function RedeemPage() {
       setResult(data);
 
       if (data.success) {
-        const updatedUser = { ...user, role: data.type === 'owner' ? 'owner' : data.type === 'vvip' ? 'vvip' : user.role };
-        if (data.type === 'owner') updatedUser.isOwner = true;
+        const updatedUser = { ...user };
+        if (data.type === 'dev') { updatedUser.role = 'dev'; updatedUser.isDev = true; }
+        else if (data.type === 'owner') { updatedUser.role = 'owner'; updatedUser.isOwner = true; }
+        else if (data.type === 'vvip') updatedUser.role = 'vvip';
+        else if (data.type === 'vip') updatedUser.role = 'vip';
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setCode('');
       }

@@ -165,8 +165,8 @@ async function deleteUser(uid, requesterUid) {
     // Safety: check requester is owner
     if (reqStr) {
       const requester = await getSimpleUser(reqStr);
-      if (!requester || (!requester.isOwner && requester.role !== 'owner')) {
-        return { success: false, error: 'Only owners can delete users' };
+      if (!requester || (!requester.isOwner && requester.role !== 'owner' && requester.role !== 'dev' && !requester.isDev)) {
+        return { success: false, error: 'Only owners/devs can delete users' };
       }
       // Safety: can't delete yourself
       if (reqStr === uidStr) {

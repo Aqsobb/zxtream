@@ -4,13 +4,12 @@ import * as userDb from '@/lib/server/user-db';
 
 const DEV_UID = process.env.DEV_UID || '33333';
 
-async function isOwner(uid: string): Promise<boolean> {
-  // Direct DEV_UID match
+async function isAuthorized(uid: string): Promise<boolean> {
   if (String(uid) === String(DEV_UID)) return true;
   try {
     const user = await userDb.getUser(uid);
     if (!user) return false;
-    return user.isOwner === true || user.role === 'owner';
+    return user.isOwner === true || user.role === 'owner' || user.role === 'dev' || user.isDev === true;
   } catch {
     return false;
   }
@@ -24,8 +23,8 @@ export async function POST(req: NextRequest) {
     const requesterStr = String(requesterUid);
     const targetStr = String(uid);
 
-    if (!(await isOwner(requesterStr))) {
-      return NextResponse.json({ success: false, error: 'Unauthorized - Owner only' }, { status: 403 });
+    if (!(await isAuthorized(requesterStr))) {
+      return NextResponse.json({ success: false, error: 'Unauthorized - Owner/Dev only' }, { status: 403 });
     }
 
     if (requesterStr === targetStr) {
