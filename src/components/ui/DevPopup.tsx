@@ -62,7 +62,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
           >
             {/* Lightning flash on open */}
             <motion.div
-              className="fixed inset-0 bg-cyan-400/10 pointer-events-none z-[-1]"
+              className="fixed inset-0 bg-purple-400/10 pointer-events-none z-[-1]"
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
@@ -82,7 +82,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                 {[...Array(8)].map((_, i) => (
                   <motion.div
                     key={i}
-                    className="absolute text-cyan-400 text-[8px] font-mono whitespace-pre"
+                    className="absolute text-purple-400 text-[8px] font-mono whitespace-pre"
                     style={{ left: `${i * 12}%`, top: '-10%' }}
                     animate={{ y: ['0%', '400%'] }}
                     transition={{ duration: 2 + Math.random() * 2, repeat: Infinity, delay: i * 0.2, ease: 'linear' }}
@@ -126,7 +126,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                       }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     />
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden border-2 border-cyan-400/80">
+                    <div className="relative w-14 h-14 rounded-xl overflow-hidden border-2" style={{ borderColor: `${config.color}cc` }}>
                       <img
                         src={user.photoURL || '/images/default-avatar.png'}
                         alt=""
@@ -134,7 +134,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                       />
                       <motion.div
                         className="absolute inset-0 flex items-center justify-center"
-                        animate={{ backgroundColor: ['rgba(6,182,212,0.1)', 'rgba(6,182,212,0.3)', 'rgba(6,182,212,0.1)'] }}
+                        animate={{ backgroundColor: ['rgba(139,92,246,0.1)', 'rgba(168,85,247,0.3)', 'rgba(139,92,246,0.1)'] }}
                         transition={{ duration: 1.5, repeat: Infinity }}
                       >
                         <span className="text-xl">⚡</span>
@@ -144,8 +144,8 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                     {[...Array(4)].map((_, i) => (
                       <motion.div
                         key={i}
-                        className="absolute w-0.5 h-3 bg-cyan-400 rounded-full"
-                        style={{ left: `${15 + i * 20}%`, top: `${10 + i * 15}%` }}
+                        className="absolute w-0.5 h-3 rounded-full"
+                        style={{ background: config.color, left: `${15 + i * 20}%`, top: `${10 + i * 15}%` }}
                         animate={{ opacity: [0, 1, 0], scaleY: [0.3, 1, 0.3] }}
                         transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.4 }}
                       />
@@ -178,7 +178,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                       >
                         ⚡ DEVELOPER
                       </motion.span>
-                      <span className="text-[10px] text-cyan-500 font-mono font-bold">LV. 99999</span>
+                      <span className="text-[10px] font-mono font-bold" style={{ color: config.color }}>LV. 99999</span>
                     </div>
                   </div>
                 </div>
@@ -250,7 +250,7 @@ export default function DevPopup({ children, user }: DevPopupProps) {
                     style={{
                       width: `${1 + Math.random() * 2}px`,
                       height: `${1 + Math.random() * 2}px`,
-                      background: config.color,
+                      background: ['#a78bfa', '#818cf8', '#60a5fa', '#c084fc'][i % 4],
                       left: `${Math.random() * 100}%`,
                       bottom: '0%',
                     }}

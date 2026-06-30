@@ -58,16 +58,54 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
         />
       )}
 
-      {/* Dev: electric glow */}
+      {/* Dev: premium galaxy frame */}
       {isDev && animated && (
-        <motion.div
-          className="absolute -inset-1 rounded-2xl"
-          style={{
-            background: `linear-gradient(135deg, ${config.color}70, transparent 30%, transparent 70%, ${config.color}70)`,
-          }}
-          animate={{ opacity: [0.4, 1, 0.4], scale: [0.98, 1.02, 0.98] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        />
+        <>
+          {/* Rotating galaxy ring */}
+          <motion.div
+            className="absolute -inset-2 rounded-2xl pointer-events-none"
+            style={{
+              background: `conic-gradient(from 0deg,
+                transparent,
+                rgba(6,182,212,0.6) 8%,
+                transparent 16%,
+                rgba(99,102,241,0.5) 24%,
+                transparent 32%,
+                rgba(168,85,247,0.4) 40%,
+                transparent 48%,
+                rgba(139,92,246,0.5) 56%,
+                transparent 64%,
+                rgba(6,182,212,0.6) 72%,
+                transparent 80%,
+                rgba(99,102,241,0.5) 88%,
+                transparent
+              )`,
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          />
+          {/* Pulsing outer glow */}
+          <motion.div
+            className="absolute -inset-3 rounded-2xl pointer-events-none"
+            animate={{
+              boxShadow: [
+                '0 0 15px rgba(6,182,212,0.3), 0 0 30px rgba(99,102,241,0.15)',
+                '0 0 25px rgba(6,182,212,0.5), 0 0 50px rgba(139,92,246,0.25)',
+                '0 0 15px rgba(6,182,212,0.3), 0 0 30px rgba(99,102,241,0.15)',
+              ],
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+          {/* Inner shimmer */}
+          <motion.div
+            className="absolute -inset-0.5 rounded-2xl pointer-events-none"
+            style={{
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.4), transparent 30%, transparent 70%, rgba(168,85,247,0.4))',
+            }}
+            animate={{ opacity: [0.3, 0.8, 0.3], scale: [0.98, 1.02, 0.98] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+        </>
       )}
 
       {/* VVIP: diamond shimmer */}
@@ -143,14 +181,36 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
           </motion.div>
         )}
 
-        {/* Dev lightning overlay */}
+        {/* Dev premium galaxy overlay */}
         {isDev && (
           <motion.div
-            className="absolute inset-0 flex items-center justify-center bg-black/20"
-            animate={{ backgroundColor: ['rgba(0,0,0,0.2)', 'rgba(6,182,212,0.1)', 'rgba(0,0,0,0.2)'] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            className="absolute inset-0 flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(99,102,241,0.1), rgba(168,85,247,0.15))',
+            }}
+            animate={{
+              background: [
+                'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(99,102,241,0.1), rgba(168,85,247,0.15))',
+                'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.15), rgba(99,102,241,0.2))',
+                'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(99,102,241,0.1), rgba(168,85,247,0.15))',
+              ],
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
           >
-            <span className={s.fontSize}>⚡</span>
+            <motion.span
+              className={s.fontSize}
+              animate={{
+                scale: [1, 1.3, 1],
+                filter: [
+                  'drop-shadow(0 0 3px rgba(6,182,212,0.6))',
+                  'drop-shadow(0 0 8px rgba(139,92,246,0.9))',
+                  'drop-shadow(0 0 3px rgba(6,182,212,0.6))',
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              ⚡
+            </motion.span>
           </motion.div>
         )}
 
@@ -212,26 +272,26 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
         </div>
       )}
 
-      {/* Electric sparks for dev */}
+      {/* Galaxy sparks for dev */}
       {isDev && animated && size !== 'sm' && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-0.5 h-3 rounded-full"
               style={{
-                background: `linear-gradient(to bottom, ${config.color}, transparent)`,
-                left: `${20 + Math.random() * 60}%`,
-                top: `${10 + Math.random() * 40}%`,
+                background: `linear-gradient(to bottom, ${['#06b6d4', '#818cf8', '#a855f7', '#6366f1'][i % 4]}, transparent)`,
+                left: `${15 + Math.random() * 70}%`,
+                top: `${10 + Math.random() * 50}%`,
               }}
               animate={{
                 opacity: [0, 1, 0],
-                scaleY: [0.5, 1, 0.5],
+                scaleY: [0.3, 1, 0.3],
               }}
               transition={{
-                duration: 0.5,
+                duration: 0.4,
                 repeat: Infinity,
-                delay: i * 0.5 + Math.random() * 0.5,
+                delay: i * 0.35 + Math.random() * 0.3,
               }}
             />
           ))}

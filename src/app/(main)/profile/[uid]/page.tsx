@@ -156,13 +156,13 @@ export default function ProfilePage() {
               <motion.div
                 className="absolute inset-0"
                 style={{
-                  background: 'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(168,85,247,0.15) 0%, transparent 60%)',
+                  background: 'radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(168,85,247,0.15) 0%, transparent 60%)',
                 }}
                 animate={{
                   background: [
-                    'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
-                    'radial-gradient(ellipse at 60% 30%, rgba(6,182,212,0.3) 0%, transparent 50%), radial-gradient(ellipse at 40% 70%, rgba(139,92,246,0.25) 0%, transparent 50%)',
-                    'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
+                    'radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
+                    'radial-gradient(ellipse at 60% 30%, rgba(168,85,247,0.3) 0%, transparent 50%), radial-gradient(ellipse at 40% 70%, rgba(139,92,246,0.25) 0%, transparent 50%)',
+                    'radial-gradient(ellipse at 30% 40%, rgba(139,92,246,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
                   ],
                 }}
                 transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
@@ -193,7 +193,7 @@ export default function ProfilePage() {
               {[...Array(5)].map((_, i) => (
                 <motion.div
                   key={`bolt-${i}`}
-                  className="absolute w-0.5 bg-cyan-400 rounded-full"
+                  className="absolute w-0.5 bg-purple-400 rounded-full"
                   style={{
                     height: `${20 + Math.random() * 40}px`,
                     left: `${15 + i * 18}%`,
@@ -216,7 +216,7 @@ export default function ProfilePage() {
               {['{ }', '< />', '=>', '&&', '||'].map((sym, i) => (
                 <motion.div
                   key={`code-${i}`}
-                  className="absolute text-cyan-400/20 text-xs font-mono"
+                  className="absolute text-purple-400/20 text-xs font-mono"
                   style={{ left: `${10 + i * 20}%`, top: '20%' }}
                   animate={{ y: [0, -80], opacity: [0.3, 0] }}
                   transition={{ duration: 3, repeat: Infinity, delay: i * 0.8 }}
@@ -273,11 +273,18 @@ export default function ProfilePage() {
                   className="absolute -inset-[2px] rounded-2xl pointer-events-none"
                   style={{
                     background: `conic-gradient(from 0deg, 
-                      transparent, rgba(6,182,212,0.6), transparent, 
-                      rgba(99,102,241,0.5), transparent, 
-                      rgba(168,85,247,0.4), transparent,
-                      rgba(6,182,212,0.6), transparent,
-                      rgba(139,92,246,0.5), transparent
+                      transparent, rgba(139,92,246,0.6) 8%, 
+                      transparent 16%,
+                      rgba(99,102,241,0.5) 24%, 
+                      transparent 32%,
+                      rgba(168,85,247,0.4) 40%,
+                      transparent 48%,
+                      rgba(6,182,212,0.5) 56%,
+                      transparent 64%,
+                      rgba(139,92,246,0.6) 72%,
+                      transparent 80%,
+                      rgba(99,102,241,0.5) 88%,
+                      transparent
                     )`,
                   }}
                   animate={{ rotate: 360 }}
@@ -287,9 +294,9 @@ export default function ProfilePage() {
                   className="absolute -inset-4 rounded-2xl pointer-events-none"
                   animate={{
                     boxShadow: [
-                      '0 0 20px rgba(6,182,212,0.3), 0 0 40px rgba(99,102,241,0.15)',
-                      '0 0 40px rgba(6,182,212,0.5), 0 0 80px rgba(139,92,246,0.25)',
-                      '0 0 20px rgba(6,182,212,0.3), 0 0 40px rgba(99,102,241,0.15)',
+                      '0 0 20px rgba(139,92,246,0.3), 0 0 40px rgba(99,102,241,0.15)',
+                      '0 0 40px rgba(139,92,246,0.5), 0 0 80px rgba(168,85,247,0.25)',
+                      '0 0 20px rgba(139,92,246,0.3), 0 0 40px rgba(99,102,241,0.15)',
                     ],
                   }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -373,10 +380,10 @@ export default function ProfilePage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="relative overflow-hidden rounded-2xl border border-cyan-500/30 p-6"
+                className="relative overflow-hidden rounded-2xl border border-purple-500/30 p-6"
                 style={{
-                  background: 'linear-gradient(135deg, #0a0a1a 0%, #0f172a 50%, #0a0a1a 100%)',
-                  boxShadow: '0 0 30px rgba(6,182,212,0.15)',
+                  background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #0f0c29 100%)',
+                  boxShadow: '0 0 30px rgba(139,92,246,0.15)',
                 }}
               >
                 {/* Header */}
@@ -386,9 +393,9 @@ export default function ProfilePage() {
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >⚡</motion.span>
-                  <h3 className="text-lg font-extrabold text-cyan-400">DEV CONTROL PANEL</h3>
+                  <h3 className="text-lg font-extrabold text-purple-400">⚡ DEV CONTROL PANEL</h3>
                 </div>
-                <p className="text-xs text-cyan-300/50 mb-4">Kamu bisa kontrol semua fitur dari sini.</p>
+                <p className="text-xs text-purple-300/50 mb-4">Kamu bisa kontrol semua fitur dari sini.</p>
 
                 {/* Quick Actions Grid */}
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
@@ -504,7 +511,7 @@ export default function ProfilePage() {
                   href="/admin"
                   className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white shadow-lg transition-all ${
                     isDev
-                      ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 shadow-cyan-500/25 hover:shadow-cyan-500/40'
+                      ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 shadow-purple-500/25 hover:shadow-purple-500/40'
                       : 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/25 hover:shadow-purple-500/40'
                   }`}
                 >

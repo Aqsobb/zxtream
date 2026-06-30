@@ -288,79 +288,125 @@ export function OwnerInfoSection() {
 export function DevInfoSection() {
   return (
     <div
-      className="relative overflow-hidden rounded-2xl border border-cyan-500/40 p-6"
+      className="relative overflow-hidden rounded-2xl border border-purple-500/40 p-6"
       style={{
         background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 30%, #24243e 60%, #0f0c29 100%)',
-        boxShadow: '0 0 30px rgba(6, 182, 212, 0.3), 0 0 60px rgba(6, 182, 212, 0.15), 0 0 100px rgba(6, 182, 212, 0.05)',
+        boxShadow: '0 0 30px rgba(139,92,246,0.3), 0 0 60px rgba(168,85,247,0.15), 0 0 100px rgba(99,102,241,0.05)',
       }}
     >
-      {/* Matrix rain background */}
-      <div className="absolute inset-0 opacity-10 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+      {/* Galaxy stars */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(25)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute text-cyan-400 text-[10px] font-mono whitespace-nowrap"
-            style={{ left: `${i * 5}%`, top: '-20%' }}
-            animate={{ y: ['0%', '600%'] }}
-            transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, delay: i * 0.3, ease: 'linear' }}
-          >
-            {Array.from({ length: 15 }, () => String.fromCharCode(0x30A0 + Math.random() * 96)).join('\n')}
-          </motion.div>
+            className="absolute rounded-full bg-white"
+            style={{
+              width: `${1 + Math.random() * 2}px`,
+              height: `${1 + Math.random() * 2}px`,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0.1, 0.8, 0.1],
+              scale: [0.5, 1.2, 0.5],
+            }}
+            transition={{
+              duration: 1.5 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 4,
+            }}
+          />
         ))}
       </div>
 
-      {/* Animated border */}
+      {/* Animated galaxy border */}
       <motion.div
         className="absolute inset-0 rounded-2xl pointer-events-none"
         style={{
           border: '2px solid transparent',
-          background: 'linear-gradient(135deg, #06b6d480, transparent 30%, transparent 70%, #06b6d480) border-box',
+          background: 'linear-gradient(135deg, #a78bfa60, transparent 30%, transparent 70%, #818cf860) border-box',
           WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
           WebkitMaskComposite: 'xor',
           maskComposite: 'exclude',
         }}
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 2, repeat: Infinity }}
+        animate={{ opacity: [0.4, 0.9, 0.4] }}
+        transition={{ duration: 3, repeat: Infinity }}
       />
 
-      {/* Lightning sparks */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-0.5 h-4 rounded-full bg-cyan-400"
-            style={{ left: `${10 + Math.random() * 80}%`, top: `${10 + Math.random() * 60}%` }}
-            animate={{ opacity: [0, 1, 0], scaleY: [0.3, 1, 0.3] }}
-            transition={{ duration: 0.3, repeat: Infinity, delay: i * 0.8 + Math.random() }}
-          />
-        ))}
-      </div>
+      {/* Galaxy nebula glow */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
+        }}
+        animate={{
+          background: [
+            'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
+            'radial-gradient(ellipse at 60% 40%, rgba(168,85,247,0.2) 0%, transparent 50%), radial-gradient(ellipse at 40% 60%, rgba(99,102,241,0.15) 0%, transparent 50%)',
+            'radial-gradient(ellipse at 30% 50%, rgba(139,92,246,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(6,182,212,0.1) 0%, transparent 50%)',
+          ],
+        }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      />
 
       <div className="relative z-10">
         <div className="flex items-center gap-3 mb-4">
           <motion.span
             className="text-4xl"
-            animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            animate={{
+              scale: [1, 1.2, 1],
+              rotate: [0, 5, -5, 0],
+              filter: [
+                'drop-shadow(0 0 5px rgba(139,92,246,0.6))',
+                'drop-shadow(0 0 15px rgba(168,85,247,0.9))',
+                'drop-shadow(0 0 5px rgba(139,92,246,0.6))',
+              ],
+            }}
+            transition={{ duration: 2.5, repeat: Infinity }}
           >⚡</motion.span>
           <div>
-            <h3 className="text-xl font-extrabold text-cyan-400">⚡ DEV Z.XTREAM ⚡</h3>
-            <p className="text-xs text-cyan-300/60 font-mono">Level 99999 • Penghancur & Pencipta</p>
+            <motion.h3
+              className="text-xl font-extrabold"
+              style={{
+                background: 'linear-gradient(135deg, #c084fc, #818cf8, #60a5fa, #a78bfa)',
+                backgroundSize: '200% 200%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+              animate={{ backgroundPosition: ['0% 0%', '200% 200%', '0% 0%'] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+            >
+              ꧁༺ DEV Z.XTREAM ༻꧂
+            </motion.h3>
+            <p className="text-xs text-purple-300/60 font-mono">Level 99999 • Penghancur & Pencipta</p>
           </div>
         </div>
         <div className="space-y-3 text-sm">
-          <p className="text-cyan-100 text-base leading-relaxed font-medium">
+          <p className="text-purple-100 text-base leading-relaxed font-medium">
             &quot;Bukan Tuhan. Tapi yang ngoding semua ini dari nol. Setiap baris kode, setiap pixel, setiap fitur — keluar dari tangan gw.&quot;
           </p>
-          <p className="text-cyan-200/50 text-xs">
+          <p className="text-purple-200/50 text-xs">
             Gw yang bikin sistem ini, gw yang bisa hancurin. Tapi gw pilih untuk jaga. 🔥⚡
           </p>
           <div className="flex items-center gap-4 pt-2">
-            <span className="text-cyan-400 font-bold">⚡ Penghancur & Pencipta</span>
+            <span className="text-purple-400 font-bold">⚡ Penghancur & Pencipta</span>
             <span className="text-gray-500">|</span>
             <span className="text-gray-300 font-mono">UID: 33333</span>
             <span className="text-gray-500">|</span>
-            <span className="text-cyan-500 font-bold">LV. 99999</span>
+            <motion.span
+              className="font-bold"
+              style={{
+                background: 'linear-gradient(135deg, #c084fc, #818cf8)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              LV. 99999
+            </motion.span>
           </div>
         </div>
       </div>
