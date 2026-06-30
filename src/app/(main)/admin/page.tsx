@@ -544,6 +544,7 @@ export default function AdminPage() {
                       <label className="text-xs text-gray-400 mb-1 block">Type</label>
                       <select value={codeType} onChange={(e) => setCodeType(e.target.value)}
                         className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500/50">
+                        <option value="dev">Developer</option>
                         <option value="owner">Owner</option>
                         <option value="vvip">VVIP</option>
                         <option value="vip">VIP</option>

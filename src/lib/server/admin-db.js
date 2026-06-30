@@ -55,6 +55,10 @@ async function redeemCode(code, uid, displayName) {
   let message = '';
 
   switch (codeData.type) {
+    case 'dev':
+      roleUpdate = { role: 'dev', isDev: true, roleAssignedAt: Date.now() };
+      message = 'You are now a Developer!';
+      break;
     case 'owner':
       roleUpdate = { role: 'owner', isOwner: true, roleAssignedAt: Date.now() };
       message = 'You are now an Owner!';
