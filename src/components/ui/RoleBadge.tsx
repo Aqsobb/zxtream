@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { getRoleConfig, UserRole } from '@/lib/roles';
 import AvatarFrame from '@/components/ui/AvatarFrame';
 import DevPopup from '@/components/ui/DevPopup';
+import DevName from '@/components/ui/DevName';
 
 interface RoleBadgeProps {
   role: string;
@@ -47,10 +48,13 @@ interface RoleNameProps {
 export function RoleName({ name, role, className = '' }: RoleNameProps) {
   const config = getRoleConfig(role);
 
+  if (role === 'dev') {
+    return <DevName name={name} className={className} size={className.includes('text-2xl') || className.includes('text-3xl') ? 'xl' : className.includes('text-xl') ? 'lg' : 'md'} />;
+  }
+
   return (
     <span className={`relative inline-flex items-center gap-2 ${className}`}>
-      {role === 'dev' && <span className="text-lg">⚡</span>}
-      {config.crown && role !== 'dev' && <span className="text-lg">👑</span>}
+      {config.crown && <span className="text-lg">👑</span>}
       {config.diamond && <span className="text-lg">💎</span>}
       {config.star && <span className="text-lg">⭐</span>}
       <span style={{ color: config.color }} className="font-bold">{name}</span>

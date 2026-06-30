@@ -114,6 +114,26 @@ async function getLeaderboard(orderBy = 'totalExp', limit = 100) {
   try {
     const { data } = await axios.get(authUrl('users'));
     if (!data) return [];
+
+    let commentCounts = {};
+    if (orderBy === 'commentCount') {
+      try {
+        const { data: comments } = await axios.get(authUrl('comments'));
+        if (comments) {
+          for (const targets of Object.values(comments)) {
+            for (const cmts of Object.values(targets)) {
+              if (typeof cmts === 'object' && cmts !== null) {
+                for (const c of Object.values(cmts)) {
+                  const uid = (c as any).uid;
+                  if (uid) commentCounts[uid] = (commentCounts[uid] || 0) + 1;
+                }
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
     const users = Object.entries(data).map(([uid, u]) => ({
       uid,
       displayName: u.displayName,
@@ -121,6 +141,7 @@ async function getLeaderboard(orderBy = 'totalExp', limit = 100) {
       level: u.level,
       exp: u.totalExp || 0,
       totalExp: u.totalExp || 0,
+      commentCount: commentCounts[uid] || 0,
       title: u.title,
       role: u.role || 'member',
       badges: u.badges || [],

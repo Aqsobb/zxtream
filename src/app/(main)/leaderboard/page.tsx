@@ -17,6 +17,7 @@ interface LeaderboardEntry {
   level: number;
   exp: number;
   totalExp: number;
+  commentCount: number;
   title: string;
   role: string;
   badges: string[];
@@ -76,7 +77,7 @@ export default function LeaderboardPage() {
         const minutes = Math.floor(((entry.watchTime || 0) % 3600) / 60);
         return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
       case 'comments':
-        return `${(entry.totalExp || 0).toLocaleString()} comments`;
+        return `${(entry as any).commentCount || 0} comments`;
       default:
         return '';
     }

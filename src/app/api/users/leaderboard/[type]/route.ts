@@ -6,7 +6,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ type
     const { type } = await params;
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '100', 10);
     // Map tab IDs to DB field names
-    const fieldMap: Record<string, string> = { exp: 'totalExp', watchtime: 'watchTime', comments: 'totalExp' };
+    const fieldMap: Record<string, string> = { exp: 'totalExp', watchtime: 'watchTime', comments: 'commentCount' };
     const field = fieldMap[type] || type;
     const data = await userDb.getLeaderboard(field, limit);
     return NextResponse.json({ success: true, data });

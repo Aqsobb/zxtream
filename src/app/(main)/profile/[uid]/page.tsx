@@ -151,12 +151,80 @@ export default function ProfilePage() {
             </>
           )}
           {isDev && (
-            <motion.div
-              className="absolute inset-0"
-              style={{ background: 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.3), transparent 70%)' }}
-              animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
+            <>
+              {/* Galaxy nebula */}
+              <motion.div
+                className="absolute inset-0"
+                style={{
+                  background: 'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(168,85,247,0.15) 0%, transparent 60%)',
+                }}
+                animate={{
+                  background: [
+                    'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
+                    'radial-gradient(ellipse at 60% 30%, rgba(6,182,212,0.3) 0%, transparent 50%), radial-gradient(ellipse at 40% 70%, rgba(139,92,246,0.25) 0%, transparent 50%)',
+                    'radial-gradient(ellipse at 30% 40%, rgba(6,182,212,0.25) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(99,102,241,0.2) 0%, transparent 50%)',
+                  ],
+                }}
+                transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+              />
+              {/* Stars */}
+              {[...Array(30)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full bg-white"
+                  style={{
+                    width: `${1 + Math.random() * 2}px`,
+                    height: `${1 + Math.random() * 2}px`,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                  }}
+                  animate={{
+                    opacity: [0.2, 1, 0.2],
+                    scale: [0.5, 1.5, 0.5],
+                  }}
+                  transition={{
+                    duration: 1 + Math.random() * 2,
+                    repeat: Infinity,
+                    delay: Math.random() * 3,
+                  }}
+                />
+              ))}
+              {/* Lightning bolts */}
+              {[...Array(5)].map((_, i) => (
+                <motion.div
+                  key={`bolt-${i}`}
+                  className="absolute w-0.5 bg-cyan-400 rounded-full"
+                  style={{
+                    height: `${20 + Math.random() * 40}px`,
+                    left: `${15 + i * 18}%`,
+                    top: `${10 + Math.random() * 40}%`,
+                    opacity: 0.6,
+                  }}
+                  animate={{
+                    opacity: [0, 0.8, 0],
+                    scaleY: [0.3, 1, 0.3],
+                  }}
+                  transition={{
+                    duration: 0.2,
+                    repeat: Infinity,
+                    delay: i * 1.5 + Math.random(),
+                    repeatDelay: 2 + Math.random() * 3,
+                  }}
+                />
+              ))}
+              {/* Floating code symbols */}
+              {['{ }', '< />', '=>', '&&', '||'].map((sym, i) => (
+                <motion.div
+                  key={`code-${i}`}
+                  className="absolute text-cyan-400/20 text-xs font-mono"
+                  style={{ left: `${10 + i * 20}%`, top: '20%' }}
+                  animate={{ y: [0, -80], opacity: [0.3, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, delay: i * 0.8 }}
+                >
+                  {sym}
+                </motion.div>
+              ))}
+            </>
           )}
           {isVVIP && (
             <motion.div
@@ -197,6 +265,36 @@ export default function ProfilePage() {
                 animate={{ rotate: 360 }}
                 transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
               />
+            )}
+            {/* Galaxy rotating border for dev */}
+            {isDev && (
+              <>
+                <motion.div
+                  className="absolute -inset-[2px] rounded-2xl pointer-events-none"
+                  style={{
+                    background: `conic-gradient(from 0deg, 
+                      transparent, rgba(6,182,212,0.6), transparent, 
+                      rgba(99,102,241,0.5), transparent, 
+                      rgba(168,85,247,0.4), transparent,
+                      rgba(6,182,212,0.6), transparent,
+                      rgba(139,92,246,0.5), transparent
+                    )`,
+                  }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                />
+                <motion.div
+                  className="absolute -inset-4 rounded-2xl pointer-events-none"
+                  animate={{
+                    boxShadow: [
+                      '0 0 20px rgba(6,182,212,0.3), 0 0 40px rgba(99,102,241,0.15)',
+                      '0 0 40px rgba(6,182,212,0.5), 0 0 80px rgba(139,92,246,0.25)',
+                      '0 0 20px rgba(6,182,212,0.3), 0 0 40px rgba(99,102,241,0.15)',
+                    ],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              </>
             )}
 
             <div className="relative z-10 p-6 lg:p-8">
@@ -265,7 +363,68 @@ export default function ProfilePage() {
 
         {/* Owner/Dev Info */}
         {isOwner && <OwnerInfoSection />}
-        {isDev && <DevInfoSection />}
+        {isDev && (
+          <div className="mt-6 space-y-4">
+            <DevInfoSection />
+
+            {/* Dev Control Panel */}
+            {isOwnProfile && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="relative overflow-hidden rounded-2xl border border-cyan-500/30 p-6"
+                style={{
+                  background: 'linear-gradient(135deg, #0a0a1a 0%, #0f172a 50%, #0a0a1a 100%)',
+                  boxShadow: '0 0 30px rgba(6,182,212,0.15)',
+                }}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.span
+                    className="text-2xl"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >⚡</motion.span>
+                  <h3 className="text-lg font-extrabold text-cyan-400">DEV CONTROL PANEL</h3>
+                </div>
+                <p className="text-xs text-cyan-300/50 mb-4">Kamu bisa kontrol semua fitur dari sini.</p>
+
+                {/* Quick Actions Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Admin Panel', icon: '🛡️', desc: 'Kelola user, codes, theme', href: '/admin', color: '#06b6d4' },
+                    { label: 'Broadcast', icon: '📢', desc: 'Kirim notif ke semua', href: '/admin', color: '#8b5cf6' },
+                    { label: 'Hero Slider', icon: '🖼️', desc: 'Kelola slide homepage', href: '/admin', color: '#a855f7' },
+                    { label: 'Settings', icon: '⚙️', desc: 'Pengaturan akun', href: '/settings', color: '#6366f1' },
+                    { label: 'Leaderboard', icon: '🏆', desc: 'Lihat ranking user', href: '/leaderboard', color: '#f59e0b' },
+                    { label: 'Browse Anime', icon: '🎌', desc: 'Cari & kelola anime', href: '/browse', color: '#ec4899' },
+                  ].map((action, i) => (
+                    <motion.div
+                      key={action.label}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.4 + i * 0.05 }}
+                    >
+                      <a
+                        href={action.href}
+                        className="block p-3 rounded-xl border transition-all hover:scale-105"
+                        style={{
+                          background: `${action.color}08`,
+                          borderColor: `${action.color}25`,
+                        }}
+                      >
+                        <span className="text-xl">{action.icon}</span>
+                        <p className="text-sm font-bold text-white mt-1">{action.label}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{action.desc}</p>
+                      </a>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -343,10 +502,14 @@ export default function ProfilePage() {
               {(isOwner || isDev || isOwnProfile) && (
                 <Link
                   href="/admin"
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-semibold text-white shadow-lg transition-all ${
+                    isDev
+                      ? 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 shadow-cyan-500/25 hover:shadow-cyan-500/40'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-500/25 hover:shadow-purple-500/40'
+                  }`}
                 >
                   <HiOutlineShieldCheck className="w-5 h-5" />
-                  Admin Panel
+                  {isDev ? '⚡ DEV Panel' : 'Admin Panel'}
                 </Link>
               )}
               <Link
