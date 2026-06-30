@@ -14,6 +14,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import RoleBadge from '@/components/ui/RoleBadge';
 import { API_BASE } from '@/lib/config';
 import HeroSlidesTab from '@/components/admin/HeroSlidesTab';
+import ScrapeTab from '@/components/admin/ScrapeTab';
 
 interface User {
   uid: string;
@@ -47,7 +48,7 @@ interface Comment {
   createdAt: number;
 }
 
-type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast' | 'donations' | 'notifications' | 'hero';
+type Tab = 'overview' | 'users' | 'codes' | 'theme' | 'comments' | 'broadcast' | 'donations' | 'notifications' | 'hero' | 'scrape';
 
 export default function AdminPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -397,6 +398,7 @@ export default function AdminPage() {
     { id: 'broadcast', label: 'Broadcast', icon: HiOutlineBell },
     { id: 'notifications', label: 'Notifikasi', icon: HiOutlineBell },
     { id: 'hero', label: 'Hero Slider', icon: HiOutlineGlobe },
+    { id: 'scrape', label: 'Scrape', icon: HiOutlineLink },
   ];
 
   return (
@@ -821,6 +823,11 @@ export default function AdminPage() {
                   </p>
                 </div>
               </motion.div>
+            )}
+
+            {/* SCRAPE TAB */}
+            {tab === 'scrape' && (
+              <ScrapeTab />
             )}
 
             {/* HERO SLIDES TAB */}

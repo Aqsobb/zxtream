@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   HiOutlinePlay, HiOutlineChevronLeft, HiOutlineChevronRight,
-  HiOutlineClock, HiOutlineBookmark, HiOutlineShare, HiOutlineRefresh,
+  HiOutlineClock, HiOutlineBookmark, HiOutlineShare,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import MainLayout from '@/components/layout/MainLayout';
@@ -51,8 +51,6 @@ export default function WatchPage() {
     } catch {}
   }, []);
 
-  const [refreshingServers, setRefreshingServers] = useState(false);
-
   useEffect(() => {
     fetchStreamData();
   }, [episodeId]);
@@ -61,12 +59,10 @@ export default function WatchPage() {
     if (animeSlug) fetchEpisodes();
   }, [animeSlug]);
 
-  const fetchStreamData = async (forceRefresh = false) => {
-    if (forceRefresh) setRefreshingServers(true);
-    else setLoading(true);
+  const fetchStreamData = async () => {
+    setLoading(true);
     try {
-      const suffix = forceRefresh ? '&refresh=1' : '';
-      const res = await fetch(`${API_BASE}/api/anime/episode/stream?url=${encodeURIComponent(episodeId)}${suffix}`);
+      const res = await fetch(`${API_BASE}/api/anime/episode/stream?url=${encodeURIComponent(episodeId)}`);
       const data = await res.json();
       if (data.success) {
         setStream(data.data);
@@ -76,7 +72,6 @@ export default function WatchPage() {
       console.error('Failed to fetch stream:', error);
     } finally {
       setLoading(false);
-      setRefreshingServers(false);
     }
   };
 
@@ -142,16 +137,6 @@ export default function WatchPage() {
   return (
     <MainLayout>
       <div className="p-4 lg:p-6 max-w-6xl mx-auto">
-        <div className="flex items-center justify-end mb-2">
-          <button
-            onClick={() => fetchStreamData(true)}
-            disabled={refreshingServers}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-400 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
-          >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 ${refreshingServers ? 'animate-spin' : ''}`} />
-            {refreshingServers ? 'Scraping...' : 'Refresh Server'}
-          </button>
-        </div>
         <VideoPlayer
           servers={stream?.servers || []}
           episodeId={episodeId}

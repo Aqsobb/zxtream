@@ -24,6 +24,7 @@ import {
   HiOutlinePlay,
   HiOutlineCheckCircle,
   HiOutlineCollection,
+  HiOutlineFilm,
 } from 'react-icons/hi';
 import { FaFire, FaCrown, FaUserShield } from 'react-icons/fa';
 import RoleBadge from '@/components/ui/RoleBadge';
@@ -44,6 +45,7 @@ const browseItems = [
   { href: '/browse/ongoing', label: 'Ongoing', icon: HiOutlinePlay },
   { href: '/browse/completed', label: 'Completed', icon: HiOutlineCheckCircle },
   { href: '/az-list', label: 'A-Z List', icon: HiOutlineGlobe },
+  { href: '/browse/drama', label: 'Short Drama', icon: HiOutlineFilm },
 ];
 
 const genreLinks = [
