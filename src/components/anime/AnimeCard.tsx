@@ -16,9 +16,10 @@ interface AnimeCardProps {
     isHot?: boolean;
   };
   index?: number;
+  href?: string;
 }
 
-export default function AnimeCard({ anime, index }: AnimeCardProps) {
+export default function AnimeCard({ anime, index, href }: AnimeCardProps) {
   const typeColors: Record<string, string> = {
     Donghua: 'bg-blue-500/90',
     Movie: 'bg-purple-500/90',
@@ -28,9 +29,11 @@ export default function AnimeCard({ anime, index }: AnimeCardProps) {
   };
 
   const badgeColor = typeColors[anime.type || ''] || 'bg-dark-600/90';
+  const isDrama = anime.type === 'drama';
+  const resolvedHref = href || (isDrama ? `/drama/${anime.slug.replace(/^drama-/, '')}` : `/anime/${anime.slug}`);
 
   return (
-    <Link href={`/anime/${anime.slug}`} className="group block">
+    <Link href={resolvedHref} className="group block">
       <div className="relative overflow-hidden rounded-lg bg-dark-800 border border-white/5 transition-all duration-300 hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10">
         {/* Thumbnail */}
         <div className="relative aspect-[3/4] overflow-hidden">

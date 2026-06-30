@@ -15,6 +15,8 @@ interface SearchResult {
   type?: string;
   episode?: string;
   url: string;
+  _type?: string;
+  bookId?: string;
 }
 
 const GENRES = [
@@ -77,7 +79,14 @@ function SearchContent() {
     try {
       const res = await fetch(`${API_BASE}/api/anime/search?q=${encodeURIComponent(searchQuery.trim())}`);
       const data = await res.json();
-      if (data.success) setResults(data.data);
+      if (data.success) {
+        const mapped = (data.data || []).map((item: any) => ({
+          ...item,
+          type: item._type === 'drama' ? 'Drama' : (item._type === 'donghua' ? 'Donghua' : item.type),
+          href: item._type === 'drama' ? `/drama/${item.bookId}` : undefined,
+        }));
+        setResults(mapped);
+      }
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
@@ -234,7 +243,7 @@ function SearchContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
               >
-                <AnimeCard anime={anime} />
+                <AnimeCard anime={anime} href={(anime as any).href} />
               </motion.div>
             ))}
           </div>

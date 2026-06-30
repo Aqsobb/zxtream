@@ -2,6 +2,16 @@ const anichin = require('./sources/anichin');
 const sansekai = require('./sources/sansekai');
 const storage = require('./storage');
 
+function dedupeResults(results, key = 'title') {
+  const seen = new Set();
+  return results.filter(item => {
+    const val = (item[key] || '').toLowerCase().trim();
+    if (!val || seen.has(val)) return false;
+    seen.add(val);
+    return true;
+  });
+}
+
 // === Multi-source helpers ===
 async function trySources(fnName, ...args) {
   // Try anichin first
@@ -113,19 +123,19 @@ async function searchAnime(query) {
   // Try anichin first
   try {
     const results = await anichin.searchAnime(query);
-    if (results?.length > 0) return results;
+    if (results?.length > 0) return dedupeResults(results);
   } catch {}
 
   // Fallback sansekai drama
   try {
     const dramas = await sansekai.searchDrama(query);
-    if (dramas?.length > 0) return dramas;
+    if (dramas?.length > 0) return dedupeResults(dramas);
   } catch {}
 
   // Fallback sansekai anime
   try {
     const anime = await sansekai.searchAnime(query);
-    if (anime?.length > 0) return anime;
+    if (anime?.length > 0) return dedupeResults(anime);
   } catch {}
 
   return [];
@@ -183,6 +193,14 @@ async function getDramaEpisodes(bookId) {
   return await storage.getDramaEpisodes(bookId);
 }
 
+async function searchDrama(query) {
+  try {
+    const sansekai = require('./sources/sansekai');
+    const results = await sansekai.searchDrama(query);
+    return dedupeResults((results || []).map(r => ({ ...r, type: 'drama', source: 'sansekai' })));
+  } catch { return []; }
+}
+
 module.exports = {
   getHomeAnime,
   getDramaHomeData,
@@ -191,6 +209,7 @@ module.exports = {
   getAnimeDetail,
   getEpisodeStream,
   searchAnime,
+  searchDrama,
   suggestAnime,
   getOngoingAnime,
   getCompletedAnime,

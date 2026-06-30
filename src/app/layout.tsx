@@ -3,22 +3,25 @@ import './globals.css';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
-  title: 'Z.XTREAM - Watch Anime Online',
-  description: 'Watch anime online for free. Stream thousands of anime episodes in HD quality.',
-  keywords: ['anime', 'streaming', 'watch anime', 'free anime', 'anime online'],
+  title: {
+    default: 'Z.XTREAM - Nonton Donghua & Drama Sub Indo',
+    template: '%s | Z.XTREAM',
+  },
+  description: 'Nonton streaming donghua, anime China, dan short drama subtitle Indonesia gratis. Update cepat, kualitas terbaik, tanpa iklan.',
+  keywords: ['donghua', 'anime china', 'short drama', 'streaming', 'subtitle indonesia', 'nonton gratis'],
   authors: [{ name: 'Z.XTREAM' }],
   openGraph: {
     type: 'website',
-    locale: 'en_US',
+    locale: 'id_ID',
     url: process.env.NEXT_PUBLIC_APP_URL,
     siteName: 'Z.XTREAM',
-    title: 'Z.XTREAM - Watch Anime Online',
-    description: 'Watch anime online for free. Stream thousands of anime episodes in HD quality.',
+    title: 'Z.XTREAM - Nonton Donghua & Drama Sub Indo',
+    description: 'Nonton streaming donghua, anime China, dan short drama subtitle Indonesia gratis. Update cepat, kualitas terbaik, tanpa iklan.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Z.XTREAM - Watch Anime Online',
-    description: 'Watch anime online for free. Stream thousands of anime episodes in HD quality.',
+    title: 'Z.XTREAM - Nonton Donghua & Drama Sub Indo',
+    description: 'Nonton streaming donghua, anime China, dan short drama subtitle Indonesia gratis. Update cepat, kualitas terbaik, tanpa iklan.',
   },
   manifest: '/manifest.json',
   icons: {
@@ -32,7 +35,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#0B0C0E',
+  themeColor: [{ media: '(prefers-color-scheme: dark)', color: '#0B0C0E' }],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
