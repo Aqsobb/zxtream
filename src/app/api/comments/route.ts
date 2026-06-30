@@ -29,6 +29,15 @@ export async function GET(req: NextRequest) {
       text: c.text,
       likes: c.likes || [],
       createdAt: c.timestamp || c.createdAt || 0,
+      replies: c.replies ? Object.entries(c.replies).map(([rid, r]: [string, any]) => ({
+        id: rid,
+        uid: r.uid,
+        displayName: r.displayName,
+        photoURL: r.photoURL || '',
+        role: r.role || 'member',
+        text: r.text,
+        createdAt: r.timestamp || r.createdAt || 0,
+      })) : [],
     }));
     comments.sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0));
     return NextResponse.json({ success: true, data: comments });
@@ -47,7 +56,6 @@ export async function POST(req: NextRequest) {
       if (!commentId || !userId) {
         return NextResponse.json({ success: false, error: 'Missing commentId or userId' }, { status: 400 });
       }
-      // Get existing comment
       const url = authUrl(`comments/${type || 'anime'}/${targetId || commentId}/${commentId}`);
       const { data: existing } = await axios.get(url).catch(() => ({ data: null }));
       if (existing) {
@@ -68,6 +76,19 @@ export async function POST(req: NextRequest) {
       const url = authUrl(`comments/${type || 'anime'}/${targetId || ''}/${commentId}`);
       await axios.delete(url);
       return NextResponse.json({ success: true });
+    }
+
+    // Handle reply action
+    if (body.action === 'reply') {
+      const { commentId, type, targetId, uid, displayName, photoURL, role, text } = body;
+      if (!commentId || !uid || !text) {
+        return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+      }
+      const now = Date.now();
+      const replyId = `r_${now}_${Math.random().toString(36).slice(2, 8)}`;
+      const reply = { uid, displayName, photoURL: photoURL || '', role: role || 'member', text, timestamp: now };
+      await axios.put(authUrl(`comments/${type || 'anime'}/${targetId}/${commentId}/replies/${replyId}`), reply);
+      return NextResponse.json({ success: true, data: { id: replyId, ...reply } });
     }
 
     // Handle new comment

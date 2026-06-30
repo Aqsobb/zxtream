@@ -155,19 +155,22 @@ async function unbanUser(uid) {
 
 async function deleteUser(uid, requesterUid) {
   try {
+    const uidStr = String(uid);
+    const reqStr = String(requesterUid);
+
     // Safety: check requester is owner
-    if (requesterUid) {
-      const requester = await getSimpleUser(requesterUid);
+    if (reqStr) {
+      const requester = await getSimpleUser(reqStr);
       if (!requester || (!requester.isOwner && requester.role !== 'owner')) {
         return { success: false, error: 'Only owners can delete users' };
       }
       // Safety: can't delete yourself
-      if (requesterUid === uid) {
+      if (reqStr === uidStr) {
         return { success: false, error: 'Cannot delete yourself' };
       }
       // Safety: can't delete other owners
-      const target = await getSimpleUser(uid);
-      if (target && (target.isOwner || target.role === 'owner')) {
+      const target = await getSimpleUser(uidStr);
+      if (target && (target.isOwner === true || target.role === 'owner')) {
         return { success: false, error: 'Cannot delete another owner' };
       }
     }

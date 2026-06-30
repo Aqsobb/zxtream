@@ -5,10 +5,12 @@ import * as userDb from '@/lib/server/user-db';
 const DEV_UID = process.env.DEV_UID || '33333';
 
 async function isOwner(uid: string): Promise<boolean> {
-  if (uid === DEV_UID) return true;
+  // Direct DEV_UID match
+  if (String(uid) === String(DEV_UID)) return true;
   try {
     const user = await userDb.getUser(uid);
-    return user && (user.isOwner || user.role === 'owner');
+    if (!user) return false;
+    return user.isOwner === true || user.role === 'owner';
   } catch {
     return false;
   }
@@ -18,20 +20,24 @@ export async function POST(req: NextRequest) {
   try {
     const { uid, requesterUid } = await req.json();
     if (!requesterUid) return NextResponse.json({ success: false, error: 'Missing requesterUid' }, { status: 400 });
-    if (!(await isOwner(requesterUid))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
 
-    // Prevent self-deletion
-    if (requesterUid === uid) {
-      return NextResponse.json({ success: false, error: 'Cannot delete yourself' }, { status: 400 });
+    const requesterStr = String(requesterUid);
+    const targetStr = String(uid);
+
+    if (!(await isOwner(requesterStr))) {
+      return NextResponse.json({ success: false, error: 'Unauthorized - Owner only' }, { status: 403 });
     }
 
-    // Prevent deleting other owners
-    const targetUser = await userDb.getUser(uid);
-    if (targetUser && (targetUser.isOwner || targetUser.role === 'owner')) {
-      return NextResponse.json({ success: false, error: 'Cannot delete another owner' }, { status: 403 });
+    if (requesterStr === targetStr) {
+      return NextResponse.json({ success: false, error: 'Tidak bisa hapus diri sendiri' }, { status: 400 });
     }
 
-    const result = await adminDb.deleteUser(uid, requesterUid);
+    const targetUser = await userDb.getUser(targetStr);
+    if (targetUser && (targetUser.isOwner === true || targetUser.role === 'owner')) {
+      return NextResponse.json({ success: false, error: 'Tidak bisa hapus owner lain' }, { status: 403 });
+    }
+
+    const result = await adminDb.deleteUser(targetStr, requesterStr);
     if (!result.success) {
       return NextResponse.json({ success: false, error: result.error }, { status: 400 });
     }

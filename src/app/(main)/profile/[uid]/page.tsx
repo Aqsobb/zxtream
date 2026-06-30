@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { HiOutlineCog, HiOutlineUserGroup, HiOutlineStar, HiOutlineClock, HiOutlineCollection, HiOutlineShieldCheck, HiOutlineSparkles } from 'react-icons/hi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { HiOutlineCog, HiOutlineUserGroup, HiOutlineStar, HiOutlineClock, HiOutlineCollection, HiOutlineShieldCheck, HiOutlineSparkles, HiOutlineHeart, HiOutlineFire, HiOutlineEye } from 'react-icons/hi';
 import MainLayout from '@/components/layout/MainLayout';
-import RoleBadge, { ProfileCard } from '@/components/ui/RoleBadge';
+import AvatarFrame from '@/components/ui/AvatarFrame';
+import RoleBadge, { RoleName, OwnerInfoSection, DevInfoSection } from '@/components/ui/RoleBadge';
 import { getLevelForExp, getProgressPercent } from '@/lib/levels';
 import { getRoleConfig } from '@/lib/roles';
 import { API_BASE } from '@/lib/config';
@@ -86,8 +87,8 @@ export default function ProfilePage() {
     return (
       <MainLayout>
         <div className="p-4 lg:p-6">
-          <div className="h-48 rounded-2xl bg-white/5 animate-pulse" />
-          <div className="h-32 w-32 rounded-full bg-white/5 animate-pulse -mt-16 mx-auto" />
+          <div className="h-64 rounded-3xl bg-white/5 animate-pulse" />
+          <div className="h-36 w-36 rounded-3xl bg-white/5 animate-pulse -mt-18 mx-auto" />
           <div className="h-8 w-48 bg-white/5 rounded animate-pulse mx-auto mt-4" />
         </div>
       </MainLayout>
@@ -109,92 +110,221 @@ export default function ProfilePage() {
   const roleConfig = getRoleConfig(profile.role);
   const isPremium = profile.role === 'owner' || profile.role === 'vvip' || profile.role === 'vip';
   const isDev = profile.role === 'dev';
+  const isOwner = profile.role === 'owner';
+  const isVVIP = profile.role === 'vvip';
 
   return (
     <MainLayout>
       <div className="p-4 lg:p-6 max-w-4xl mx-auto">
-        {/* Profile Card with Role Effects */}
-        <ProfileCard user={profile} className="mb-6" />
-
-        {/* Role-specific role glow effect */}
-        {isDev && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-center"
-          >
-            <span className="text-cyan-400 text-sm font-medium">⚡ Developer Mode Active — Full Access</span>
-          </motion.div>
-        )}
-        {profile.role === 'owner' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-center"
-          >
-            <span className="text-yellow-400 text-sm font-medium">👑 Boss Besar — Full Control</span>
-          </motion.div>
-        )}
-
-        {/* Level Progress */}
-        <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Level {profile.level}</span>
-            <span className="text-sm text-gray-400">{profile.totalExp} EXP</span>
-          </div>
-          <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+        {/* Epic Banner */}
+        <div
+          className="relative h-48 lg:h-64 rounded-3xl overflow-hidden mb-6"
+          style={{ background: roleConfig.bannerGradient }}
+        >
+          {/* Animated overlay effects */}
+          {isOwner && (
+            <>
+              <motion.div
+                className="absolute inset-0"
+                style={{ background: 'radial-gradient(circle at 50% 50%, rgba(245,158,11,0.3), transparent 70%)' }}
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 4, repeat: Infinity }}
+              />
+              {[...Array(12)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 rounded-full bg-yellow-400"
+                  style={{ left: `${10 + Math.random() * 80}%`, bottom: '0%' }}
+                  animate={{
+                    y: [0, -200 - Math.random() * 100],
+                    opacity: [1, 0],
+                    scale: [1, 0.3],
+                  }}
+                  transition={{
+                    duration: 2 + Math.random() * 2,
+                    repeat: Infinity,
+                    delay: i * 0.3,
+                    ease: 'easeOut',
+                  }}
+                />
+              ))}
+            </>
+          )}
+          {isDev && (
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+              className="absolute inset-0"
+              style={{ background: 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.3), transparent 70%)' }}
+              animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.7, 0.4] }}
+              transition={{ duration: 3, repeat: Infinity }}
             />
+          )}
+          {isVVIP && (
+            <motion.div
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(45deg, transparent 30%, rgba(168,85,247,0.2) 50%, transparent 70%)',
+                backgroundSize: '200% 200%',
+              }}
+              animate={{ backgroundPosition: ['200% 0%', '-200% 0%'] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-dark-950 via-dark-950/50 to-transparent" />
+
+          {/* Back button */}
+          <Link href="/home" className="absolute top-4 left-4 p-2 bg-black/40 backdrop-blur-sm rounded-xl text-white hover:bg-black/60 transition-colors z-10">
+            ← Kembali
+          </Link>
+        </div>
+
+        {/* Profile Card */}
+        <div className="-mt-24 relative z-10">
+          <div
+            className="relative overflow-hidden rounded-2xl border"
+            style={{
+              borderColor: roleConfig.color + '40',
+              boxShadow: roleConfig.glow !== 'none' ? roleConfig.glow : '0 0 30px rgba(0,0,0,0.5)',
+              background: 'rgba(17,24,39,0.95)',
+            }}
+          >
+            {/* Animated border for owner */}
+            {isOwner && (
+              <motion.div
+                className="absolute -inset-[1px] rounded-2xl pointer-events-none"
+                style={{
+                  background: `conic-gradient(from 0deg, transparent, ${roleConfig.color}60, transparent, ${roleConfig.color}60, transparent)`,
+                }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+              />
+            )}
+
+            <div className="relative z-10 p-6 lg:p-8">
+              <div className="flex flex-col lg:flex-row items-center lg:items-start gap-6">
+                {/* Avatar */}
+                <div className="relative">
+                  <AvatarFrame
+                    src={profile.photoURL}
+                    role={profile.role}
+                    size="xl"
+                  />
+                  {isOwnProfile && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 px-2 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-[10px] font-bold text-white shadow-lg"
+                    >
+                      KAMU
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="flex items-center gap-3 justify-center lg:justify-start flex-wrap">
+                    <RoleName name={profile.displayName} role={profile.role} className="text-2xl lg:text-3xl" />
+                    <RoleBadge role={profile.role} size="md" />
+                  </div>
+                  {profile.title && (
+                    <p className="text-sm mt-1 italic" style={{ color: roleConfig.color }}>
+                      &quot;{profile.title}&quot;
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">UID: {profile.uid}</p>
+
+                  {/* Level Progress */}
+                  <div className="mt-4 max-w-md">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-medium" style={{ color: roleConfig.color }}>Level {profile.level}</span>
+                      <span className="text-xs text-gray-400">{profile.totalExp} EXP</span>
+                    </div>
+                    <div className="h-3 bg-white/5 rounded-full overflow-hidden border border-white/10">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        className="h-full rounded-full"
+                        style={{
+                          background: `linear-gradient(90deg, ${roleConfig.color}, ${roleConfig.color}80)`,
+                          boxShadow: `0 0 10px ${roleConfig.color}60`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {profile.bio && (
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <p className="text-gray-200 text-center lg:text-left">{profile.bio}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Bio */}
-        {profile.bio && (
-          <p className="mt-4 text-gray-300 text-center lg:text-left">{profile.bio}</p>
-        )}
+        {/* Owner/Dev Info */}
+        {isOwner && <OwnerInfoSection />}
+        {isDev && <DevInfoSection />}
 
-        {/* Stats */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl text-center">
-            <HiOutlineClock className="w-6 h-6 mx-auto text-purple-400 mb-2" />
-            <p className="text-2xl font-bold">{Math.floor(profile.watchTime / 3600)}h</p>
-            <p className="text-sm text-gray-500">Watch Time</p>
-          </div>
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl text-center">
-            <HiOutlineUserGroup className="w-6 h-6 mx-auto text-pink-400 mb-2" />
-            <p className="text-2xl font-bold">{profile.followers?.length || 0}</p>
-            <p className="text-sm text-gray-500">Followers</p>
-          </div>
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl text-center">
-            <HiOutlineStar className="w-6 h-6 mx-auto text-yellow-400 mb-2" />
-            <p className="text-2xl font-bold">{profile.achievements?.length || 0}</p>
-            <p className="text-sm text-gray-500">Achievements</p>
-          </div>
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl text-center">
-            <HiOutlineCollection className="w-6 h-6 mx-auto text-green-400 mb-2" />
-            <p className="text-2xl font-bold">{profile.badges?.length || 0}</p>
-            <p className="text-sm text-gray-500">Badges</p>
-          </div>
+          {[
+            { icon: HiOutlineClock, value: Math.floor(profile.watchTime / 3600), label: 'Jam Nonton', color: roleConfig.color },
+            { icon: HiOutlineUserGroup, value: profile.followers?.length || 0, label: 'Followers', color: '#ec4899' },
+            { icon: HiOutlineHeart, value: profile.following?.length || 0, label: 'Following', color: '#f43f5e' },
+            { icon: HiOutlineStar, value: profile.badges?.length || 0, label: 'Badges', color: '#eab308' },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              className="relative overflow-hidden p-4 rounded-2xl border border-white/10"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+            >
+              <stat.icon className="w-5 h-5 mb-2" style={{ color: stat.color }} />
+              <p className="text-2xl font-extrabold text-white">{stat.value}</p>
+              <p className="text-xs text-gray-400">{stat.label}</p>
+              <div
+                className="absolute -bottom-2 -right-2 w-16 h-16 rounded-full opacity-10"
+                style={{ background: stat.color }}
+              />
+            </motion.div>
+          ))}
         </div>
 
         {/* Badges */}
         {profile.badges && profile.badges.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-lg font-bold mb-3">Badges</h2>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl"
+          >
+            <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <HiOutlineCollection className="w-5 h-5" style={{ color: roleConfig.color }} />
+              Badges
+            </h2>
             <div className="flex flex-wrap gap-2">
-              {profile.badges.map((badge) => (
-                <div
+              {profile.badges.map((badge, i) => (
+                <motion.div
                   key={badge}
-                  className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-sm"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.5 + i * 0.05 }}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium border"
+                  style={{
+                    background: `${roleConfig.color}15`,
+                    borderColor: `${roleConfig.color}30`,
+                    color: roleConfig.color,
+                  }}
                 >
                   {badge}
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Actions */}
@@ -210,7 +340,7 @@ export default function ProfilePage() {
                   Upgrade Premium
                 </button>
               )}
-              {(profile.role === 'owner' || profile.role === 'dev' || isOwnProfile) && (
+              {(isOwner || isDev || isOwnProfile) && (
                 <Link
                   href="/admin"
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all"
@@ -264,13 +394,13 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-2 mb-1">
                     <RoleBadge role="vip" size="sm" />
                   </div>
-                  <p className="text-xs text-gray-400">Akses semua server, badge VIP, efek khusus</p>
+                  <p className="text-xs text-gray-400">Akses semua server, badge VIP, efek khusus, custom profil statis</p>
                 </div>
                 <div className="p-3 bg-white/5 rounded-xl border border-purple-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <RoleBadge role="vvip" size="sm" />
                   </div>
-                  <p className="text-xs text-gray-400">Semua fitur VIP + Diamond badge + Banner gacor + Prioritas</p>
+                  <p className="text-xs text-gray-400">Semua fitur VIP + Diamond badge + Avatar animasi + Banner gacor + Prioritas</p>
                 </div>
               </div>
               <p className="text-sm text-gray-400 mb-4">

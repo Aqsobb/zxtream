@@ -9,17 +9,18 @@ interface AvatarFrameProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showStatus?: boolean;
   isOnline?: boolean;
+  animated?: boolean;
   className?: string;
 }
 
 const sizeMap = {
-  sm: { img: 'w-8 h-8', frame: 'w-10 h-10', ring: 36 },
-  md: { img: 'w-10 h-10', frame: 'w-12 h-12', ring: 48 },
-  lg: { img: 'w-16 h-16', frame: 'w-20 h-20', ring: 80 },
-  xl: { img: 'w-24 h-24', frame: 'w-28 h-28', ring: 112 },
+  sm: { img: 'w-8 h-8', frame: 'w-10 h-10', ring: 36, fontSize: 'text-[8px]' },
+  md: { img: 'w-10 h-10', frame: 'w-12 h-12', ring: 48, fontSize: 'text-xs' },
+  lg: { img: 'w-16 h-16', frame: 'w-20 h-20', ring: 80, fontSize: 'text-sm' },
+  xl: { img: 'w-24 h-24', frame: 'w-28 h-28', ring: 112, fontSize: 'text-base' },
 };
 
-export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnline, className = '' }: AvatarFrameProps) {
+export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnline, animated = true, className = '' }: AvatarFrameProps) {
   const config = getRoleConfig(role);
   const s = sizeMap[size];
   const isDev = role === 'dev';
@@ -30,60 +31,100 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
 
   return (
     <div className={`relative flex-shrink-0 ${className}`} style={{ width: s.ring, height: s.ring }}>
-      {/* Outer animated ring for dev/owner */}
-      {isOwner && (
+      {/* Owner: rotating golden ring */}
+      {isOwner && animated && (
         <motion.div
-          className="absolute -inset-1 rounded-2xl"
+          className="absolute -inset-1.5 rounded-2xl"
           style={{
-            background: `conic-gradient(from 0deg, transparent, ${config.color}80, transparent, ${config.color}80, transparent)`,
+            background: `conic-gradient(from 0deg, transparent, ${config.color}90, transparent, ${config.color}90, transparent)`,
           }}
           animate={{ rotate: 360 }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-        />
-      )}
-
-      {/* Animated glow ring for dev */}
-      {isDev && (
-        <motion.div
-          className="absolute -inset-0.5 rounded-2xl"
-          style={{
-            background: `linear-gradient(135deg, ${config.color}60, transparent 30%, transparent 70%, ${config.color}60)`,
-          }}
-          animate={{ opacity: [0.5, 1, 0.5], scale: [1, 1.02, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        />
-      )}
-
-      {/* VVIP diamond border */}
-      {isVVIP && (
-        <motion.div
-          className="absolute -inset-0.5 rounded-2xl"
-          style={{
-            background: `linear-gradient(135deg, ${config.color}50, #ec489980, ${config.color}50)`,
-            backgroundSize: '200% 200%',
-          }}
-          animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
         />
       )}
 
-      {/* VIP simple glow */}
-      {isVIP && (
-        <div
+      {/* Owner: pulsing outer glow */}
+      {isOwner && animated && (
+        <motion.div
+          className="absolute -inset-3 rounded-2xl pointer-events-none"
+          animate={{
+            boxShadow: [
+              `0 0 15px ${config.color}40, 0 0 30px ${config.color}20`,
+              `0 0 25px ${config.color}60, 0 0 50px ${config.color}30`,
+              `0 0 15px ${config.color}40, 0 0 30px ${config.color}20`,
+            ],
+          }}
+          transition={{ duration: 2, repeat: Infinity }}
+        />
+      )}
+
+      {/* Dev: electric glow */}
+      {isDev && animated && (
+        <motion.div
+          className="absolute -inset-1 rounded-2xl"
+          style={{
+            background: `linear-gradient(135deg, ${config.color}70, transparent 30%, transparent 70%, ${config.color}70)`,
+          }}
+          animate={{ opacity: [0.4, 1, 0.4], scale: [0.98, 1.02, 0.98] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        />
+      )}
+
+      {/* VVIP: diamond shimmer */}
+      {isVVIP && animated && (
+        <motion.div
+          className="absolute -inset-1 rounded-2xl"
+          style={{
+            background: `linear-gradient(135deg, ${config.color}60, #ec489990, ${config.color}60)`,
+            backgroundSize: '200% 200%',
+          }}
+          animate={{ backgroundPosition: ['0% 0%', '100% 100%', '0% 0%'] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+        />
+      )}
+
+      {/* VVIP: breathing glow */}
+      {isVVIP && animated && (
+        <motion.div
+          className="absolute -inset-2 rounded-2xl pointer-events-none"
+          animate={{
+            boxShadow: [
+              `0 0 10px ${config.color}30`,
+              `0 0 20px ${config.color}50`,
+              `0 0 10px ${config.color}30`,
+            ],
+          }}
+          transition={{ duration: 3, repeat: Infinity }}
+        />
+      )}
+
+      {/* VIP: star glow */}
+      {isVIP && animated && (
+        <motion.div
           className="absolute -inset-0.5 rounded-2xl"
           style={{
-            background: `linear-gradient(135deg, ${config.color}40, transparent, ${config.color}40)`,
+            background: `linear-gradient(135deg, ${config.color}50, transparent, ${config.color}50)`,
           }}
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
         />
       )}
 
       {/* Main image container */}
-      <div
-        className={`relative ${s.img} rounded-2xl overflow-hidden`}
+      <motion.div
+        className={`relative ${s.img} rounded-2xl overflow-hidden z-10`}
         style={{
-          border: `2px solid ${isPremium ? config.color + '80' : '#37415180'}`,
-          boxShadow: isPremium ? `0 0 12px ${config.color}30` : undefined,
+          border: `2px solid ${isPremium ? config.color + '90' : '#37415180'}`,
+          boxShadow: isPremium ? `0 0 15px ${config.color}40` : undefined,
         }}
+        animate={isOwner && animated ? {
+          boxShadow: [
+            `0 0 10px ${config.color}30`,
+            `0 0 20px ${config.color}60`,
+            `0 0 10px ${config.color}30`,
+          ],
+        } : undefined}
+        transition={isOwner && animated ? { duration: 2, repeat: Infinity } : undefined}
       >
         <img
           src={src || '/images/default-avatar.png'}
@@ -93,64 +134,129 @@ export default function AvatarFrame({ src, role, size = 'md', showStatus, isOnli
 
         {/* Owner crown overlay */}
         {isOwner && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <span className={`${size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-lg'}`}>👑</span>
-          </div>
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center bg-black/20"
+            animate={{ backgroundColor: ['rgba(0,0,0,0.2)', 'rgba(245,158,11,0.1)', 'rgba(0,0,0,0.2)'] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          >
+            <span className={s.fontSize}>👑</span>
+          </motion.div>
         )}
 
         {/* Dev lightning overlay */}
         {isDev && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <span className={`${size === 'sm' ? 'text-xs' : size === 'md' ? 'text-sm' : 'text-lg'}`}>⚡</span>
-          </div>
+          <motion.div
+            className="absolute inset-0 flex items-center justify-center bg-black/20"
+            animate={{ backgroundColor: ['rgba(0,0,0,0.2)', 'rgba(6,182,212,0.1)', 'rgba(0,0,0,0.2)'] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <span className={s.fontSize}>⚡</span>
+          </motion.div>
         )}
 
         {/* VVIP diamond overlay */}
         {isVVIP && (
           <div className="absolute bottom-0 right-0 p-0.5 bg-dark-900/80 rounded-tl-lg">
-            <span className={`${size === 'sm' ? 'text-[8px]' : 'text-xs'}`}>💎</span>
+            <motion.span
+              className={s.fontSize}
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              💎
+            </motion.span>
           </div>
         )}
 
         {/* VIP star overlay */}
         {isVIP && (
           <div className="absolute bottom-0 right-0 p-0.5 bg-dark-900/80 rounded-tl-lg">
-            <span className={`${size === 'sm' ? 'text-[8px]' : 'text-xs'}`}>⭐</span>
+            <span className={s.fontSize}>⭐</span>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Online status */}
       {showStatus && (
-        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-dark-900 ${
+        <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-dark-900 z-20 ${
           isOnline ? 'bg-green-500' : 'bg-gray-500'
         }`} />
       )}
 
-      {/* Floating particles for owner/dev */}
-      {isPremium && size !== 'sm' && (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          {[...Array(isOwner ? 6 : isDev ? 5 : isVVIP ? 3 : 0)].map((_, i) => (
+      {/* Floating particles for owner */}
+      {isOwner && animated && size !== 'sm' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {[...Array(8)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute rounded-full"
               style={{
-                width: '2px',
-                height: '2px',
+                width: `${1 + Math.random() * 2}px`,
+                height: `${1 + Math.random() * 2}px`,
                 background: config.color,
-                left: `${20 + Math.random() * 60}%`,
+                left: `${10 + Math.random() * 80}%`,
                 bottom: '10%',
               }}
               animate={{
-                y: [0, -30 - Math.random() * 20],
-                opacity: [0.8, 0],
+                y: [0, -25 - Math.random() * 15],
+                opacity: [1, 0],
                 scale: [1, 0],
               }}
               transition={{
-                duration: 1.2 + Math.random(),
+                duration: 1 + Math.random(),
                 repeat: Infinity,
-                delay: i * 0.3,
+                delay: i * 0.2,
                 ease: 'easeOut',
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Electric sparks for dev */}
+      {isDev && animated && size !== 'sm' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {[...Array(4)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-0.5 h-3 rounded-full"
+              style={{
+                background: `linear-gradient(to bottom, ${config.color}, transparent)`,
+                left: `${20 + Math.random() * 60}%`,
+                top: `${10 + Math.random() * 40}%`,
+              }}
+              animate={{
+                opacity: [0, 1, 0],
+                scaleY: [0.5, 1, 0.5],
+              }}
+              transition={{
+                duration: 0.5,
+                repeat: Infinity,
+                delay: i * 0.5 + Math.random() * 0.5,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Diamond sparkles for VVIP */}
+      {isVVIP && animated && size !== 'sm' && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full bg-white"
+              style={{
+                left: `${15 + Math.random() * 70}%`,
+                top: `${15 + Math.random() * 70}%`,
+              }}
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0.5, 1.5, 0.5],
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                delay: i * 0.4,
               }}
             />
           ))}
