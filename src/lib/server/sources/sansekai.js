@@ -53,20 +53,6 @@ function transformDrama(item, source) {
   };
 }
 
-function transformAnime(item) {
-  return {
-    title: item.title || '',
-    slug: `anime-${item.id || item.slug || ''}`,
-    thumbnail: item.thumbnail || item.image || item.cover || '',
-    episode: item.episode || '',
-    episodeNum: item.episodeNum || '',
-    synopsis: item.synopsis || item.description || '',
-    type: 'anime',
-    source: 'sansekai-anime',
-    genres: (item.genres || []).join(', '),
-    rating: item.rating || '',
-  };
-}
 
 function transformMovie(item) {
   return {
@@ -169,39 +155,6 @@ async function searchDrama(query) {
   return (data || []).map(i => transformDrama(i, 'dramabox'));
 }
 
-// === Anime (from sansekai) ===
-async function getAnimeHome() {
-  const data = await rateLimitedFetch(`${BASE_URL}/anime/home`);
-  if (!data) return [];
-  if (Array.isArray(data)) return data.map(i => transformAnime(i));
-  // Might have sections
-  const items = [];
-  if (data.popular) items.push(...data.popular.map(i => transformAnime(i)));
-  if (data.latest) items.push(...data.latest.map(i => transformAnime(i)));
-  if (data.trending) items.push(...data.trending.map(i => transformAnime(i)));
-  return items;
-}
-
-async function getAnimeDetail(id) {
-  const data = await rateLimitedFetch(`${BASE_URL}/anime/detail?id=${id}`);
-  if (!data) return null;
-  return {
-    ...transformAnime(data),
-    episodes: (data.episodes || []).map((ep, i) => ({
-      title: ep.title || `Episode ${i + 1}`,
-      number: i + 1,
-      url: ep.streamUrl || ep.url || '',
-      date: ep.date || '',
-    })),
-    genres: (data.genres || []).join(', '),
-  };
-}
-
-async function searchAnime(query) {
-  const data = await rateLimitedFetch(`${BASE_URL}/anime/search?query=${encodeURIComponent(query)}`);
-  return (data || []).map(i => transformAnime(i));
-}
-
 // === Movie (MovieBox) ===
 async function getMovieHome() {
   const data = await rateLimitedFetch(`${BASE_URL}/moviebox/home`);
@@ -226,9 +179,6 @@ module.exports = {
   getDramaDetail,
   getDramaEpisodes,
   searchDrama,
-  getAnimeHome,
-  getAnimeDetail,
-  searchAnime,
   getMovieHome,
   searchMovie,
 };

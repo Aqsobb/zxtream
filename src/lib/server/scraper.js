@@ -1,6 +1,17 @@
 const anichin = require('./sources/anichin');
 const sansekai = require('./sources/sansekai');
+const reelshort = require('./sources/reelshort');
 const storage = require('./storage');
+
+// In-memory request dedup: key => promise
+const inFlight = new Map();
+
+function dedupeRun(key, fn) {
+  if (inFlight.has(key)) return inFlight.get(key);
+  const p = fn().finally(() => { if (inFlight.get(key) === p) inFlight.delete(key); });
+  inFlight.set(key, p);
+  return p;
+}
 
 function dedupeResults(results, key = 'title') {
   const seen = new Set();
@@ -14,7 +25,6 @@ function dedupeResults(results, key = 'title') {
 
 // === Multi-source helpers ===
 async function trySources(fnName, ...args) {
-  // Try anichin first
   if (anichin[fnName]) {
     try {
       const result = await anichin[fnName](...args);
@@ -23,8 +33,6 @@ async function trySources(fnName, ...args) {
       console.error(`[scraper] anichin.${fnName} failed:`, e.message);
     }
   }
-
-  // Fallback to sansekai
   if (sansekai[fnName]) {
     try {
       return await sansekai[fnName](...args);
@@ -32,44 +40,60 @@ async function trySources(fnName, ...args) {
       console.error(`[scraper] sansekai.${fnName} failed:`, e.message);
     }
   }
-
   return null;
 }
 
 // === Home ===
 async function getHomeAnime() {
-  // Check Firebase storage first (instant, no waiting)
   const stored = await storage.getHomePage();
+  const isFresh = stored && stored.popular?.length > 0 && (Date.now() - (stored._savedAt || 0)) < 15 * 60 * 1000;
+
+  if (isFresh) return stored;
+
+  // Stale-while-revalidate: return stored immediately, revalidate in background
   if (stored && stored.popular?.length > 0) {
-    const age = Date.now() - (stored._savedAt || 0);
-    // If data is < 15 min old, return immediately (no scrape)
-    if (age < 15 * 60 * 1000) return stored;
+    dedupeRun('home-refresh', async () => {
+      try {
+        const fresh = await anichin.getHome();
+        if (fresh && fresh.popular?.length > 0) {
+          storage.saveHomePage(fresh).catch(() => {});
+        }
+      } catch {}
+    });
+    return stored;
   }
 
-  // If no stored data or stale, scrape fresh from anichin
-  try {
-    const fresh = await anichin.getHome();
-    if (fresh && fresh.popular?.length > 0) {
-      await storage.saveHomePage(fresh).catch(() => {});
-      return fresh;
-    }
-  } catch {}
+  // No stored data — scrape (with dedup)
+  return dedupeRun('home-scrape', async () => {
+    try {
+      const fresh = await anichin.getHome();
+      if (fresh && fresh.popular?.length > 0) {
+        storage.saveHomePage(fresh).catch(() => {});
+        return fresh;
+      }
+    } catch {}
 
-  // Fallback: return stored even if stale
-  if (stored && stored.popular?.length > 0) return stored;
+    if (stored && stored.popular?.length > 0) return stored;
 
-  // Last resort: sansekai drama
-  try {
-    const drama = await sansekai.getDramaHome();
-    if (drama?.length > 0) {
-      return { popular: drama.slice(0, 20), ongoing: [], schedule: [], hero: drama.slice(0, 5).map(d => ({ title: d.title, slug: d.slug, thumbnail: d.thumbnail, synopsis: d.synopsis })), source: 'sansekai' };
-    }
-  } catch {}
+    // Last resort: reelshort drama
+    try {
+      const drama = await reelshort.getHome();
+      if (drama?.length > 0) {
+        return { popular: drama.slice(0, 20), ongoing: [], schedule: [], hero: drama.slice(0, 5).map(d => ({ title: d.title, slug: d.slug, thumbnail: d.thumbnail, synopsis: d.synopsis })), source: 'reelshort' };
+      }
+    } catch {}
 
-  return { popular: [], ongoing: [], schedule: [], hero: [] };
+    return { popular: [], ongoing: [], schedule: [], hero: [] };
+  });
 }
 
 async function getDramaHomeData() {
+  // ReelShort first
+  try {
+    const dramas = await reelshort.getHome();
+    if (dramas?.length > 0) return dramas;
+  } catch {}
+  // Fallback to sansekai
   try {
     const dramas = await sansekai.getDramaHome();
     if (dramas?.length > 0) return dramas;
@@ -93,29 +117,33 @@ async function getMovieHomeData() {
 
 // === Anime Detail ===
 async function getAnimeDetail(slug, forceRefresh = false) {
-  // Check permanent storage first (if not force refresh)
-  if (!forceRefresh) {
-    const stored = await storage.getAnime(slug);
-    if (stored && stored.title) {
-      const age = Date.now() - (stored._savedAt || 0);
-      if (age < 5 * 60 * 1000) return stored; // 5 min cache
-    }
+  const stored = await storage.getAnime(slug);
+  const isFresh = stored?.title && !forceRefresh && (Date.now() - (stored._savedAt || 0)) < 5 * 60 * 1000;
+
+  if (isFresh) return stored;
+
+  if (stored?.title && !forceRefresh) {
+    // Stale-while-revalidate
+    dedupeRun(`detail-${slug}`, async () => {
+      try {
+        const fresh = await anichin.getAnimeDetail(slug);
+        if (fresh?.title) storage.saveAnime(slug, fresh).catch(() => {});
+      } catch {}
+    });
+    return stored;
   }
 
-  // Try to scrape fresh
-  try {
-    const fresh = await anichin.getAnimeDetail(slug);
-    if (fresh?.title) {
-      await storage.saveAnime(slug, fresh).catch(() => {});
-      return fresh;
-    }
-  } catch {}
-
-  // Fallback to stored (even if stale)
-  const stored = await storage.getAnime(slug);
-  if (stored?.title) return stored;
-
-  return null;
+  return dedupeRun(`detail-${slug}`, async () => {
+    try {
+      const fresh = await anichin.getAnimeDetail(slug);
+      if (fresh?.title) {
+        storage.saveAnime(slug, fresh).catch(() => {});
+        return fresh;
+      }
+    } catch {}
+    if (stored?.title) return stored;
+    return null;
+  });
 }
 
 // === Episode Stream ===
@@ -133,16 +161,16 @@ async function searchAnime(query) {
     if (results?.length > 0) return dedupeResults(results);
   } catch {}
 
+  // Fallback reelshort drama
+  try {
+    const dramas = await reelshort.searchDrama(query);
+    if (dramas?.length > 0) return dedupeResults(dramas.map(r => ({ ...r, type: 'drama', source: 'reelshort' })));
+  } catch {}
+
   // Fallback sansekai drama
   try {
     const dramas = await sansekai.searchDrama(query);
     if (dramas?.length > 0) return dedupeResults(dramas);
-  } catch {}
-
-  // Fallback sansekai anime
-  try {
-    const anime = await sansekai.searchAnime(query);
-    if (anime?.length > 0) return dedupeResults(anime);
   } catch {}
 
   return [];
@@ -176,34 +204,65 @@ async function getAnimeByGenre(genre, page = 1) {
 // === Drama API (direct) — Firebase first, scrape only if stale ===
 async function getDramaDetail(bookId) {
   const stored = await storage.getDrama(bookId);
+  const isFresh = stored?.title && (Date.now() - (stored._savedAt || 0)) < 30 * 60 * 1000;
+
+  if (isFresh) return stored;
+
   if (stored?.title) {
-    const age = Date.now() - (stored._savedAt || 0);
-    if (age < 30 * 60 * 1000) return stored; // 30 min cache from Firebase
+    dedupeRun(`drama-${bookId}`, async () => {
+      try {
+        // Try reelshort first
+        const fresh = await reelshort.getDramaDetail(bookId);
+        if (fresh?.title) { storage.saveDrama(bookId, fresh).catch(() => {}); return; }
+      } catch {}
+      try {
+        // Fallback sansekai
+        const fresh = await sansekai.getDramaDetail(bookId);
+        if (fresh?.title) storage.saveDrama(bookId, fresh).catch(() => {});
+      } catch {}
+    });
+    return stored;
   }
 
-  try {
-    const fresh = await sansekai.getDramaDetail(bookId);
-    if (fresh?.title) {
-      await storage.saveDrama(bookId, fresh).catch(() => {});
-      return fresh;
-    }
-  } catch {}
-
-  if (stored?.title) return stored;
-  return null;
+  return dedupeRun(`drama-${bookId}`, async () => {
+    // Try reelshort first
+    try {
+      const fresh = await reelshort.getDramaDetail(bookId);
+      if (fresh?.title) {
+        storage.saveDrama(bookId, fresh).catch(() => {});
+        return fresh;
+      }
+    } catch {}
+    // Fallback sansekai
+    try {
+      const fresh = await sansekai.getDramaDetail(bookId);
+      if (fresh?.title) {
+        storage.saveDrama(bookId, fresh).catch(() => {});
+        return fresh;
+      }
+    } catch {}
+    if (stored?.title) return stored;
+    return null;
+  });
 }
 
 async function getDramaEpisodes(bookId) {
   const stored = await storage.getDramaEpisodes(bookId);
-  if (stored?.length > 0) {
-    // Episodes rarely change, use 1 hour cache
-    return stored;
-  }
+  if (stored?.length > 0) return stored;
 
+  // ReelShort first
+  try {
+    const fresh = await reelshort.getDramaEpisodes(bookId);
+    if (fresh?.length > 0) {
+      storage.saveDramaEpisodes(bookId, fresh).catch(() => {});
+      return fresh;
+    }
+  } catch {}
+  // Fallback sansekai
   try {
     const fresh = await sansekai.getDramaEpisodes(bookId);
     if (fresh?.length > 0) {
-      await storage.saveDramaEpisodes(bookId, fresh).catch(() => {});
+      storage.saveDramaEpisodes(bookId, fresh).catch(() => {});
       return fresh;
     }
   } catch {}
@@ -212,11 +271,17 @@ async function getDramaEpisodes(bookId) {
 }
 
 async function searchDrama(query) {
+  // ReelShort first
   try {
-    const sansekai = require('./sources/sansekai');
+    const results = await reelshort.searchDrama(query);
+    if (results?.length > 0) return dedupeResults(results.map(r => ({ ...r, type: 'drama', source: 'reelshort' })));
+  } catch {}
+  // Fallback sansekai
+  try {
     const results = await sansekai.searchDrama(query);
-    return dedupeResults((results || []).map(r => ({ ...r, type: 'drama', source: 'sansekai' })));
-  } catch { return []; }
+    if (results?.length > 0) return dedupeResults(results.map(r => ({ ...r, type: 'drama', source: 'sansekai' })));
+  } catch {}
+  return [];
 }
 
 module.exports = {

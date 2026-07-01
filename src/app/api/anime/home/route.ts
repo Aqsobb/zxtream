@@ -19,11 +19,10 @@ export async function GET(req: NextRequest) {
       await axios.delete(deleteUrl).catch(() => {});
     }
 
-    const homeData = await scraper.getHomeAnime();
-    let ongoing: any[] = [];
-    try {
-      ongoing = await scraper.getOngoingAnime(1);
-    } catch {}
+    const [homeData, ongoing] = await Promise.allSettled([
+      scraper.getHomeAnime(),
+      scraper.getOngoingAnime(1),
+    ]).then(r => [r[0].status === 'fulfilled' ? r[0].value : { popular: [], schedule: [], hero: [] }, r[1].status === 'fulfilled' ? r[1].value : []]);
 
     return NextResponse.json({
       success: true,

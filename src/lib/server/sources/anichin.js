@@ -1,10 +1,11 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
+// Priority order: .moe has full content, others may be empty/placeholder
 const MIRRORS = [
   'https://anichin.moe',
-  'https://anichin.best',
   'https://anichin.cafe',
+  'https://anichin.best',
 ];
 
 const LANDING_PAGES = [
@@ -18,7 +19,8 @@ const UA_LIST = [
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
 ];
 
-let activeBaseUrl = null;
+// Always start with moe — it has full content
+let activeBaseUrl = MIRRORS[0];
 
 function pickUA() { return UA_LIST[Math.floor(Math.random() * UA_LIST.length)]; }
 
@@ -40,7 +42,9 @@ function makeHeaders() {
 
 function parseHtml(html) {
   if (!html || typeof html !== 'string') return null;
-  if (html.includes('challenge-platform') || html.length < 500) return null;
+  // Reject only if it's entirely a challenge page (no real content)
+  if (html.length < 500) return null;
+  if (html.includes('Just a moment') && html.length < 5000) return null;
   try { return cheerio.load(html); } catch { return null; }
 }
 
@@ -66,15 +70,7 @@ async function resolveActiveDomain() {
 }
 
 async function getBaseUrl() {
-  if (activeBaseUrl) return activeBaseUrl;
-  const resolved = await resolveActiveDomain();
-  if (resolved && resolved !== activeBaseUrl) {
-    activeBaseUrl = resolved;
-    console.log(`[anichin] Resolved active domain: ${activeBaseUrl}`);
-    // Also add resolved to mirrors
-    if (!MIRRORS.includes(activeBaseUrl)) MIRRORS.unshift(activeBaseUrl);
-    return activeBaseUrl;
-  }
+  // Always return moe as primary — it has full content
   return MIRRORS[0];
 }
 
@@ -86,20 +82,19 @@ async function directFetch(url) {
 }
 
 async function fetchPage(url) {
-  const base = await getBaseUrl();
-  const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
-  const $ = await directFetch(fullUrl);
-  if ($) return $;
-
-  // Fallback: try all mirrors
-  for (const mirror of MIRRORS) {
-    if (mirror === base) continue;
-    const fallbackUrl = url.startsWith('http') ? url.replace(/https?:\/\/[^\/]+/, mirror) : `${mirror}${url}`;
-    const $$ = await directFetch(fallbackUrl);
-    if ($$) {
-      activeBaseUrl = mirror;
-      return $$;
-    }
+  // Try all mirrors in parallel — return the first that succeeds
+  const results = await Promise.allSettled(
+    MIRRORS.map(async (mirror) => {
+      const fullUrl = url.startsWith('http') ? url.replace(/https?:\/\/[^\/]+/, mirror) : `${mirror}${url}`;
+      const $ = await directFetch(fullUrl);
+      if ($) return { mirror, $ };
+      throw new Error('empty');
+    })
+  );
+  const ok = results.find(r => r.status === 'fulfilled' && r.value);
+  if (ok) {
+    activeBaseUrl = ok.value.mirror;
+    return ok.value.$;
   }
   return null;
 }
