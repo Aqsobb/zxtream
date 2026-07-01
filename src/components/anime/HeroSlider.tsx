@@ -80,7 +80,7 @@ export default function HeroSlider({ slides }: HeroSliderProps) {
                     </p>
                   )}
                   <Link
-                    href={`/anime/${slide.slug}`}
+                    href={slide.slug?.startsWith('drama-') ? `/drama/${slide.slug.replace('drama-', '')}` : `/anime/${slide.slug}`}
                     className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/25"
                   >
                     <HiOutlinePlay className="w-5 h-5" />

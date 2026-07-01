@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
     const { commentId, requesterUid } = await req.json();
     if (!requesterUid) return NextResponse.json({ success: false, error: 'Missing requesterUid' }, { status: 400 });
     if (!(await isOwner(requesterUid))) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
-    await adminDb.deleteComment(commentId);
+    const result = await adminDb.deleteComment(commentId, requesterUid);
+    if (!result?.success) return NextResponse.json({ success: false, error: result?.error || 'Failed' }, { status: 403 });
     return NextResponse.json({ success: true });
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e.message }, { status: 500 });

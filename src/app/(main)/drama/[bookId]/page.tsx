@@ -97,7 +97,7 @@ export default function DramaDetailPage() {
 
               {drama.genres && (
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {drama.genres.split(',').map((g: string) => g.trim()).filter(Boolean).map((genre: string) => (
+                  {(Array.isArray(drama.genres) ? drama.genres : drama.genres.split(',')).map((g: string) => g.trim()).filter(Boolean).map((genre: string) => (
                     <span key={genre} className="px-3 py-1.5 bg-white/5 text-sm rounded-lg border border-white/5">
                       {genre}
                     </span>

@@ -49,12 +49,12 @@ const browseItems = [
 ];
 
 const genreLinks = [
-  { label: 'Action', href: '/search?q=action' },
-  { label: 'Fantasy', href: '/search?q=fantasy' },
-  { label: 'Adventure', href: '/search?q=adventure' },
-  { label: 'Martial Arts', href: '/search?q=martial+arts' },
-  { label: 'Comedy', href: '/search?q=comedy' },
-  { label: 'Drama', href: '/search?q=drama' },
+  { label: 'Action', href: '/genre/action' },
+  { label: 'Fantasy', href: '/genre/fantasy' },
+  { label: 'Adventure', href: '/genre/adventure' },
+  { label: 'Martial Arts', href: '/genre/martial-arts' },
+  { label: 'Comedy', href: '/genre/comedy' },
+  { label: 'Drama', href: '/genre/drama' },
 ];
 
 interface SidebarProps {

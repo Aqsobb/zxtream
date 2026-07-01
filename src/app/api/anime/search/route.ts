@@ -14,9 +14,21 @@ export async function GET(req: NextRequest) {
       scraper.searchDrama(q),
     ]);
 
+    // Deduplicate: searchAnime may include drama fallback results
+    const seen = new Set();
     const data = [
-      ...(donghua || []).map((d: any) => ({ ...d, _type: 'donghua' })),
-      ...(dramas || []).map((d: any) => ({ ...d, _type: 'drama' })),
+      ...(donghua || []).map((d: any) => {
+        const key = (d.title || '').toLowerCase().trim();
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return { ...d, _type: d.type === 'drama' ? 'drama' : 'donghua' };
+      }).filter(Boolean),
+      ...(dramas || []).map((d: any) => {
+        const key = (d.title || '').toLowerCase().trim();
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return { ...d, _type: 'drama' };
+      }).filter(Boolean),
     ];
 
     return NextResponse.json({ success: true, count: data.length, data });

@@ -263,11 +263,9 @@ export default function SearchPage() {
   return (
     <MainLayout>
       <Suspense fallback={
-        <MainLayout>
-          <div className="p-4 lg:p-6 text-center py-12">
-            <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        </MainLayout>
+        <div className="p-4 lg:p-6 text-center py-12">
+          <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
       }>
         <SearchContent />
       </Suspense>

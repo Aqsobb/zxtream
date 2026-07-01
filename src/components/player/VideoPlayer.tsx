@@ -291,8 +291,13 @@ export default function VideoPlayer({ servers, episodeId, animeSlug, episodes, u
     if (idx === -1) return;
     const target = direction === 'prev' ? episodes[idx - 1] : episodes[idx + 1];
     if (target) {
-      const slug = target.url.split('/').filter(Boolean).pop() || '';
-      window.location.href = `/watch/${slug}`;
+      // Drama episodes have URLs like /watch/drama/{bookId}/{ep}
+      if (target.url.includes('/watch/drama/')) {
+        window.location.href = target.url;
+      } else {
+        const slug = target.url.split('/').filter(Boolean).pop() || '';
+        window.location.href = `/watch/${slug}`;
+      }
     }
   };
 

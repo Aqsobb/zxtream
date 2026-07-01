@@ -405,7 +405,7 @@ export default function ProfilePage() {
                     { label: 'Hero Slider', icon: '🖼️', desc: 'Kelola slide homepage', href: '/admin', color: '#a855f7' },
                     { label: 'Settings', icon: '⚙️', desc: 'Pengaturan akun', href: '/settings', color: '#6366f1' },
                     { label: 'Leaderboard', icon: '🏆', desc: 'Lihat ranking user', href: '/leaderboard', color: '#f59e0b' },
-                    { label: 'Browse Anime', icon: '🎌', desc: 'Cari & kelola anime', href: '/browse', color: '#ec4899' },
+                    { label: 'Browse Anime', icon: '🎌', desc: 'Cari & kelola anime', href: '/browse/populer', color: '#ec4899' },
                   ].map((action, i) => (
                     <motion.div
                       key={action.label}
