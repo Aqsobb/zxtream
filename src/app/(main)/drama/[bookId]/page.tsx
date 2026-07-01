@@ -87,10 +87,10 @@ export default function DramaDetailPage() {
                 <span className="px-3 py-1.5 bg-green-600/20 text-green-400 rounded-lg text-sm font-medium border border-green-500/20">
                   {drama.source === 'dramabox' ? 'Short Drama' : 'Drama'}
                 </span>
-                {drama.info?.totalepisode && (
+                {(drama.info?.totalepisode ?? drama.chapterCount ?? episodes.length) > 0 && (
                   <span className="flex items-center gap-1.5 text-sm text-gray-400">
                     <HiOutlinePlay className="w-4 h-4" />
-                    {drama.info.totalepisode} Episode
+                    {drama.info?.totalepisode ?? drama.chapterCount ?? episodes.length} Episode
                   </span>
                 )}
               </div>

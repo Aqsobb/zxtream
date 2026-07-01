@@ -12,6 +12,7 @@ const HEADERS = {
 };
 
 let cachedBuildId = null;
+const bookCache = new Map(); // bookId -> book object
 
 async function getBuildId() {
   if (cachedBuildId) return cachedBuildId;
@@ -85,26 +86,28 @@ async function searchDrama(query) {
   return books.map(transformBook);
 }
 
+async function findBook(bookId) {
+  if (bookCache.has(bookId)) return bookCache.get(bookId);
+  const terms = ['love', 'revenge', 'ceo', 'reborn', 'sweet'];
+  for (const term of terms) {
+    try {
+      const data = await apiFetch(`/search.json?keywords=${encodeURIComponent(term)}`);
+      const books = data?.pageProps?.books || [];
+      for (const b of books) {
+        if (b.book_id) bookCache.set(b.book_id, b);
+        if (b.t_book_id) bookCache.set(b.t_book_id, b);
+      }
+      const found = books.find(b => b.book_id === bookId || b.t_book_id === bookId);
+      if (found) return found;
+      await new Promise(r => setTimeout(r, 1500));
+    } catch {}
+  }
+  return null;
+}
+
 async function getDramaDetail(bookId) {
   try {
-    // Try to get detail directly using the slug pattern
-    // First search to find the book info
-    const data = await apiFetch('/search.json?keywords=');
-    let book = (data?.pageProps?.books || []).find(b => b.book_id === bookId || b.t_book_id === bookId);
-
-    // If not found in empty search, try broader search
-    if (!book) {
-      const terms = ['love', 'revenge', 'ceo', 'reborn', 'sweet'];
-      for (const term of terms) {
-        if (book) break;
-        try {
-          const d = await apiFetch(`/search.json?keywords=${encodeURIComponent(term)}`);
-          book = (d?.pageProps?.books || []).find(b => b.book_id === bookId || b.t_book_id === bookId);
-          await new Promise(r => setTimeout(r, 1500));
-        } catch {}
-      }
-    }
-
+    const book = await findBook(bookId);
     if (!book) return null;
 
     const slug = filterTitle(book.book_title) + '-' + book.book_id;
@@ -146,6 +149,7 @@ async function getDramaEpisodes(bookId) {
   return detail.episodes.map(ep => ({
     title: ep.title,
     number: ep.number,
+    chapterId: ep.chapterId,
     url: '',
     date: '',
     duration: '',
@@ -155,17 +159,7 @@ async function getDramaEpisodes(bookId) {
 
 async function getEpisodeStream(bookId, episodeNum, chapterId) {
   try {
-    // Search to find the book
-    const terms = ['love', 'revenge', 'ceo', 'reborn', 'sweet'];
-    let book = null;
-    for (const term of terms) {
-      try {
-        const data = await apiFetch(`/search.json?keywords=${encodeURIComponent(term)}`);
-        book = (data?.pageProps?.books || []).find(b => b.book_id === bookId || b.t_book_id === bookId);
-        if (book) break;
-        await new Promise(r => setTimeout(r, 1500));
-      } catch {}
-    }
+    const book = await findBook(bookId);
     if (!book) return null;
 
     const slug = filterTitle(book.book_title) + '-' + book.book_id;

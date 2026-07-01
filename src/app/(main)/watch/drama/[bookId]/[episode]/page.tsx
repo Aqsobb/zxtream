@@ -18,6 +18,8 @@ export default function DramaWatchPage() {
   const [drama, setDrama] = useState<any>(null);
   const [episodes, setEpisodes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [streamUrl, setStreamUrl] = useState<string | null>(null);
+  const [streamLoading, setStreamLoading] = useState(false);
   const [userRole, setUserRole] = useState('');
 
   useEffect(() => {
@@ -26,7 +28,11 @@ export default function DramaWatchPage() {
       if (user?.role) setUserRole(user.role);
     } catch {}
     fetchData();
-  }, [bookId, episodeNum]);
+  }, [bookId]);
+
+  useEffect(() => {
+    if (episodes.length > 0) fetchStream();
+  }, [bookId, episodeNum, episodes]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,12 +48,30 @@ export default function DramaWatchPage() {
     } catch {} finally { setLoading(false); }
   };
 
+  const fetchStream = async () => {
+    const currentEp = episodes.find((ep: any) => ep.number === episodeNum);
+    if (currentEp?.servers?.length > 0 || currentEp?.url) return;
+
+    setStreamLoading(true);
+    try {
+      const ep = episodes.find((e: any) => e.number === episodeNum);
+      const chapterId = ep?.chapterId ? `?chapterId=${ep.chapterId}` : '';
+      const res = await fetch(`${API_BASE}/api/drama/stream/${bookId}/${episodeNum}${chapterId}`);
+      const data = await res.json();
+      if (data.success && data.data?.videoUrl) setStreamUrl(data.data.videoUrl);
+    } catch {} finally { setStreamLoading(false); }
+  };
+
   const currentEp = episodes.find((ep: any) => ep.number === episodeNum);
   const currentIdx = episodes.findIndex((ep: any) => ep.number === episodeNum);
 
-  const servers = currentEp?.servers || (currentEp?.url ? [
-    { name: 'Sansekai Stream', url: currentEp.url, directUrl: currentEp.url, directType: currentEp.url?.includes('.m3u8') ? 'hls' : 'mp4', premium: false },
-  ] : []);
+  const servers = currentEp?.servers?.length > 0
+    ? currentEp.servers
+    : currentEp?.url
+    ? [{ name: 'Stream', url: currentEp.url, directUrl: currentEp.url, directType: currentEp.url?.includes('.m3u8') ? 'hls' : 'mp4', premium: false }]
+    : streamUrl
+    ? [{ name: 'ReelShort HLS', url: streamUrl, directUrl: streamUrl, directType: streamUrl.includes('.m3u8') ? 'hls' : 'mp4', premium: false }]
+    : [];
 
   if (loading) {
     return (
@@ -75,6 +99,13 @@ export default function DramaWatchPage() {
             }))}
             userRole={userRole}
           />
+        ) : streamLoading ? (
+          <div className="aspect-video rounded-2xl bg-white/5 flex items-center justify-center">
+            <div className="text-center">
+              <HiOutlineRefresh className="w-10 h-10 mx-auto text-cyan-400 animate-spin mb-3" />
+              <p className="text-gray-400">Memuat stream...</p>
+            </div>
+          </div>
         ) : (
           <div className="aspect-video rounded-2xl bg-white/5 flex items-center justify-center">
             <div className="text-center">

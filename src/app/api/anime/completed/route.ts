@@ -10,6 +10,6 @@ export async function GET(req: NextRequest) {
     const data = await getCompletedAnime(page);
     return NextResponse.json({ success: true, page, count: data.length, data });
   } catch (e: any) {
-    return NextResponse.json({ success: true, page: 1, count: 0, data: [] });
+    return NextResponse.json({ success: false, error: e.message, page: 1, count: 0, data: [] }, { status: 500 });
   }
 }

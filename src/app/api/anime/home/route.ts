@@ -7,9 +7,14 @@ export const maxDuration = 30;
 export async function GET(req: NextRequest) {
   try {
     const forceRefresh = req.nextUrl.searchParams.get('refresh') === '1';
+    const requesterUid = req.headers.get('x-user-uid');
 
     if (forceRefresh) {
-      // Force re-scrape by clearing stored home data
+      const DEV_UID = process.env.DEV_UID || '33333';
+      const isAdmin = req.headers.get('x-user-role') === 'admin' || String(requesterUid) === String(DEV_UID);
+      if (!isAdmin) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+      }
       const axios = require('axios');
       const DB_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || 'https://dtabase-80c9a-default-rtdb.asia-southeast1.firebasedatabase.app';
       const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';

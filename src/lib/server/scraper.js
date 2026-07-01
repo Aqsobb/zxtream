@@ -284,6 +284,39 @@ async function searchDrama(query) {
   return [];
 }
 
+// === Drama Episode Stream ===
+async function getDramaEpisodeStream(bookId, episodeNum, chapterId) {
+  return dedupeRun(`drama-stream-${bookId}-${episodeNum}-${chapterId || ''}`, async () => {
+    // Try reelshort first
+    try {
+      const result = await reelshort.getEpisodeStream(bookId, episodeNum, chapterId);
+      if (result?.videoUrl) return result;
+    } catch {}
+    // Fallback sansekai
+    try {
+      const episodes = await sansekai.getDramaEpisodes(bookId);
+      const ep = episodes?.find(e => e.number === episodeNum);
+      if (ep?.url) {
+        return {
+          videoUrl: ep.url,
+          thumbnail: '',
+          title: ep.title || `Episode ${episodeNum}`,
+          duration: '',
+          episodeNum,
+          servers: [{
+            name: 'Sansekai Stream',
+            url: ep.url,
+            directUrl: ep.url,
+            directType: ep.url.includes('.m3u8') ? 'hls' : 'mp4',
+            premium: false,
+          }],
+        };
+      }
+    } catch {}
+    return null;
+  });
+}
+
 module.exports = {
   getHomeAnime,
   getDramaHomeData,
@@ -299,4 +332,5 @@ module.exports = {
   getAnimeByGenre,
   getDramaDetail,
   getDramaEpisodes,
+  getDramaEpisodeStream,
 };

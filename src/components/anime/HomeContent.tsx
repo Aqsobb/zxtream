@@ -47,7 +47,6 @@ export default function HomeContent() {
   const [popular, setPopular] = useState<AnimeItem[]>([]);
   const [ongoing, setOngoing] = useState<AnimeItem[]>([]);
   const [completed, setCompleted] = useState<AnimeItem[]>([]);
-  const [upcoming, setUpcoming] = useState<AnimeItem[]>([]);
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
   const [schedule, setSchedule] = useState<ScheduleDay[]>([]);
   const [dramas, setDramas] = useState<AnimeItem[]>([]);
@@ -60,10 +59,9 @@ export default function HomeContent() {
     Promise.all([
       fetch(`${API_BASE}/api/anime/home`).then(r => r.json()),
       fetch(`${API_BASE}/api/anime/completed?page=1`).then(r => r.json()),
-      fetch(`${API_BASE}/api/anime/upcoming`).then(r => r.json()).catch(() => ({ success: false, data: [] })),
-      fetch(`${API_BASE}/api/drama/home`).then(r => r.json()).catch(() => ({ success: false, data: { dramas: [], movies: [] } })),
+      fetch(`${API_BASE}/api/drama/home`).then(r => r.json()).catch(() => ({ success: false, data: { dramas: [], movies: [], trending: [] } })),
     ])
-      .then(([homeData, completedData, upcomingData, dramaData]) => {
+      .then(([homeData, completedData, dramaData]) => {
         if (homeData.success) {
           setPopular(homeData.data.popular || []);
           setOngoing(homeData.data.ongoing || []);
@@ -77,11 +75,10 @@ export default function HomeContent() {
           }
         } else { setError(true); }
         if (completedData.success) setCompleted(completedData.data?.items || completedData.data || []);
-        if (upcomingData.success) setUpcoming(upcomingData.data || []);
         if (dramaData.success) {
           setDramas(dramaData.data.dramas || []);
           setMovies(dramaData.data.movies || []);
-          setDramaTrending(dramaData.data.dramas?.slice(0, 8) || []);
+          setDramaTrending(dramaData.data.trending || dramaData.data.dramas?.slice(0, 8) || []);
         }
       })
       .catch(() => setError(true))
@@ -239,6 +236,35 @@ export default function HomeContent() {
         </>
       )}
 
+      {showDrama && dramaTrending.length > 0 && (
+        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-500/10 rounded-xl">
+                <HiOutlineFire className="w-6 h-6 text-green-400" />
+              </div>
+              <h2 className="text-xl font-bold">Drama Trending</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {dramaTrending.slice(0, 12).map((drama, i) => (
+              <motion.div key={drama.slug} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                <Link href={`/drama/${drama.slug?.replace(/^drama-/, '').replace(/^reelshort-/, '')}`} className="group">
+                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white/5 mb-2 relative">
+                    <img src={drama.thumbnail} alt={drama.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                      <span className="text-[10px] text-green-400 font-medium bg-green-500/20 px-1.5 py-0.5 rounded">TRENDING</span>
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium line-clamp-2 group-hover:text-green-400 transition-colors">{drama.title}</p>
+                  {drama.episode && <p className="text-xs text-gray-500 mt-1">{drama.episode}</p>}
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
       {showDrama && dramas.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-5">
@@ -252,7 +278,7 @@ export default function HomeContent() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {dramas.slice(0, 12).map((drama, i) => (
               <motion.div key={drama.slug} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <Link href={`/drama/${drama.slug?.replace('drama-', '')}`} className="group">
+                <Link href={`/drama/${drama.slug?.replace(/^drama-/, '').replace(/^reelshort-/, '')}`} className="group">
                   <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white/5 mb-2 relative">
                     <img src={drama.thumbnail} alt={drama.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
@@ -281,7 +307,7 @@ export default function HomeContent() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {movies.slice(0, 12).map((movie, i) => (
               <motion.div key={movie.slug} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <Link href={`/drama/${movie.slug?.replace('movie-', '')}`} className="group">
+                <Link href={`/drama/${movie.slug?.replace(/^movie-/, '').replace(/^reelshort-/, '')}`} className="group">
                   <div className="aspect-[3/4] rounded-xl overflow-hidden bg-white/5 mb-2 relative">
                     <img src={movie.thumbnail} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
                     <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
