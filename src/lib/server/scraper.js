@@ -155,22 +155,10 @@ async function getEpisodeStream(episodeUrl) {
 
 // === Search ===
 async function searchAnime(query) {
-  // Try anichin first
+  // Only search anichin for anime/donghua results
   try {
     const results = await anichin.searchAnime(query);
     if (results?.length > 0) return dedupeResults(results);
-  } catch {}
-
-  // Fallback reelshort drama
-  try {
-    const dramas = await reelshort.searchDrama(query);
-    if (dramas?.length > 0) return dedupeResults(dramas.map(r => ({ ...r, type: 'drama', source: 'reelshort' })));
-  } catch {}
-
-  // Fallback sansekai drama
-  try {
-    const dramas = await sansekai.searchDrama(query);
-    if (dramas?.length > 0) return dedupeResults(dramas);
   } catch {}
 
   return [];

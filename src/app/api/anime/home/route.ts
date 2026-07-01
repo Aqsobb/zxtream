@@ -27,13 +27,26 @@ export async function GET(req: NextRequest) {
     const [homeData, ongoing] = await Promise.allSettled([
       scraper.getHomeAnime(),
       scraper.getOngoingAnime(1),
-    ]).then(r => [r[0].status === 'fulfilled' ? r[0].value : { popular: [], schedule: [], hero: [] }, r[1].status === 'fulfilled' ? r[1].value : []]);
+    ]).then(r => [r[0].status === 'fulfilled' ? r[0].value : { popular: [], ongoing: [], schedule: [], hero: [] }, r[1].status === 'fulfilled' ? r[1].value : []]);
+
+    // Merge ongoing from home page and dedicated ongoing page
+    const ongoingMerged = [
+      ...(ongoing || []),
+      ...(homeData.ongoing || []),
+    ];
+    // Dedup by slug
+    const seenSlugs = new Set();
+    const ongoingFinal = ongoingMerged.filter((item: any) => {
+      if (!item?.slug || seenSlugs.has(item.slug)) return false;
+      seenSlugs.add(item.slug);
+      return true;
+    });
 
     return NextResponse.json({
       success: true,
       data: {
         popular: homeData.popular || [],
-        ongoing,
+        ongoing: ongoingFinal,
         schedule: homeData.schedule || [],
         hero: homeData.hero || [],
       },
